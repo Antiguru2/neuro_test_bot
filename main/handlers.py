@@ -153,19 +153,23 @@ async def studying(callback: types.CallbackQuery, state: FSMContext):
 )
 async def studying(callback: types.CallbackQuery, state: FSMContext):
     '''
-        Запускает обучение
+        Запускает тестирование
     '''
     # Проверяем может ли пользователь использовать бота
-    user_data = await state.get_data()
+    state_data = await state.get_data()
     from_user_id = callback.message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(callback.message, from_user_id)
   
     if user_is_allowed:
         await state.set_state(MainStatesGroup.testing)   
 
-        last_stage = await main_utils.get_last_stage(state)
-        
-        last_question = await main_utils.get_last_stage(state)
+        last_stage = await main_utils.get_last_stage(state)        
+        last_question_num = state_data.get('last_question_num', 0)
+
+        question_data = await main_utils.get_question_data(last_stage, last_question_num) 
+
+        # print('question_data', question_data)
+
 
 
 

@@ -1,9 +1,21 @@
 import re
+import json
 
-file_path = 'knowledge_bases/test_knowledge_base.txt'
+knowledge_base_file_path = 'knowledge_bases/test_knowledge_base.txt'
 
 def get_knowledge_base():
-    with open(file_path, 'r') as file:
+    content = ''
+    with open(knowledge_base_file_path, 'r') as file:
         content = file.read()
 
-    return content   
+    return content  
+
+
+questions_data_file_path = 'questions_data.json'
+
+def get_questions_data():
+    questions_data = []
+    with open(questions_data_file_path, 'r') as file:
+        questions_data = json.loads(file.read())
+
+    return questions_data  

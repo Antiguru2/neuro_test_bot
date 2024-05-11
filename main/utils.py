@@ -11,6 +11,8 @@ from aiogram import (
     types,
 )
 
+from interfaces import test_interface as interface
+
 load_dotenv()
 
 allowed_users_list = os.getenv('ALLOUWED_USERS', '').split(",")
@@ -18,7 +20,6 @@ allowed_users_list = os.getenv('ALLOUWED_USERS', '').split(",")
 TELEGRAM_BOT_FOR_SEND_ERRORS_TOKEN = os.getenv('TELEGRAM_BOT_FOR_SEND_ERRORS_TOKEN')
 CHANNEL_FOR_SEND_ERRORS_ID = os.getenv('CHANNEL_FOR_SEND_ERRORS_ID')  
 
-from interfaces import test_interface as interface
 
 async def try_message_delete(message: types.Message):
     '''
@@ -183,12 +184,27 @@ def get_stage_content_by_number(stage_number: int) -> str:
 async def get_last_stage(state: FSMContext,) -> int:
     state_data = await state.get_data()
     user_data = state_data.get('user_data')
-    last_stage = 1
-    studying_history = user_data.get('studying_history')
-    if studying_history:
-        last_stage = len(last_stage) 
+    last_stage = 0
+    if user_data:
+        studying_history = user_data.get('studying_history')
+        if studying_history:
+            last_stage = len(last_stage) 
     
     return last_stage
+
+
+async def get_question_data(stage_num, question_num) -> dict:
+    question_data = {}
+    questions_data = interface.get_questions_data()
+    print('questions_data', questions_data)
+    if questions_data:
+        stage_questions_data = questions_data[stage_num]
+        print('stage_questions_data', stage_questions_data)
+        if stage_questions_data:
+            question_data = stage_questions_data[question_num]
+            print('question_data', question_data)
+    
+    return question_data
 
 
 def send_message_about_error(error_text, name_sender='None', error_data=None, error_data_is_traceback=False, to_fix=False):
