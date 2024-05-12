@@ -108,17 +108,14 @@ async def start(message: types.Message, state: FSMContext):
     await main_utils.append_value_state_data(state, 'previous_messages', [new_message.message_id])
 
 
-@main_router.callback_query(
-    F.data == 'studying',
-)
-async def studying(callback: types.CallbackQuery, state: FSMContext):
+async def studying(message: types.Message, state: FSMContext):
     '''
         Запускает обучение
     '''
     print('studying')
     # Проверяем может ли пользователь использовать бота
-    from_user_id = callback.message.chat.id
-    user_is_allowed = await main_utils.user_is_allowed(callback.message, from_user_id)
+    from_user_id = message.chat.id
+    user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
   
     if user_is_allowed:
         await state.set_state(MainStatesGroup.studying)   
@@ -130,14 +127,16 @@ async def studying(callback: types.CallbackQuery, state: FSMContext):
 
         stage_content = main_utils.get_stage_content_by_number(stage_num)
 
-        await main_utils.delete_previous_messages(bot, callback.message, state)
+        await main_utils.delete_previous_messages(bot, message, state)
 
-        await callback.answer(
+        await bot.answer_callback_query(
+            state_data.get('last_callback_id'),
             text=str(
-                '🔎 Изучите материал.'
+                f'{stage_num} этап'
+                '\n🔎 Изучите материал.'
                 '\n📝 Затем пройдите тестирование'
             ),
-            show_alert=True,
+            show_alert=True,            
         )
 
         message_data = {
@@ -149,7 +148,20 @@ async def studying(callback: types.CallbackQuery, state: FSMContext):
         message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
 
         if is_sent:
-            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])  
+            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])
+
+
+@main_router.callback_query(
+    F.data == 'studying',
+)
+async def studying_router(callback: types.CallbackQuery, state: FSMContext):
+    '''
+        Запускает обучение
+    '''
+    state_data = await state.update_data(
+        last_callback_id=callback.id
+    )
+    await studying(callback.message, state)
 
 
 async def testing(message: types.Message, state: FSMContext):
@@ -207,14 +219,15 @@ async def verification(callback: types.CallbackQuery, state: FSMContext):
     '''
     print('verification')  
     # Проверяем может ли пользователь использовать бота
-    state_data = await state.get_data()
+    state_data = await state.update_data(
+        last_callback_id=callback.id
+    )
     from_user_id = callback.message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(callback.message, from_user_id)
   
     if user_is_allowed:
         answer_index = int(callback.data.split('__')[1])
 
-        state_data = await state.get_data()
         stage_num = state_data.get('stage_num')
         question_num = state_data.get('question_num')     
 
@@ -229,8 +242,12 @@ async def verification(callback: types.CallbackQuery, state: FSMContext):
         user_data: dict = state_data.get("user_data")
         studying_history: list = user_data.get('studying_history', [])
         stage_history = []
+        print('studying_history', studying_history)
         if studying_history:
-            stage_history: list = studying_history.pop(stage_num - 1)
+            try:
+                stage_history: list = studying_history.pop(stage_num - 1)
+            except IndexError:
+                pass
         
         stage_history.append({'is_correct_answer': is_correct_answer})
 
@@ -286,7 +303,34 @@ async def verification(message: types.Message, state: FSMContext):
         stage_questions_data = await main_utils.get_stage_questions_data(stage_num - 1) 
 
         if question_num < len(stage_questions_data):
-            state_data = await state.update_data(
+            await state.update_data(
                 question_num=question_num + 1
             )
             await testing(message, state) 
+        else:
+            print('stage_num', stage_num)
+            print('len(studying_history)', len(studying_history))
+            questions_data = interface.get_questions_data()
+            if stage_num < len(questions_data):
+                await state.update_data(
+                    stage_num=stage_num + 1,
+                    question_num=1,
+                )
+                await studying(message, state)        
+
+            else:
+                await main_utils.delete_previous_messages(bot, message, state)
+
+                message_data = {
+                    'text': str(
+                        f"Обучение завершено"
+                        f"\nВы набрали {main_utils.get_points_count(studying_history)} балов"
+                    ),    
+                    'chat_id': from_user_id,
+                    'parse_mode': 'html',
+                    'reply_markup': main_keyboards.get_question_keyboard(question_data.get('answers')),
+                }  
+                message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+
+                if is_sent:
+                    await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])                 

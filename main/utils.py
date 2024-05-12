@@ -223,6 +223,15 @@ async def get_question_data(stage_num, question_num) -> dict:
     
     return question_data
 
+def get_points_count(studying_history):
+    points_count = 0
+    for stage_history in studying_history:
+        for answer in stage_history:
+            is_correct_answer = answer.get('is_correct_answer')
+            if is_correct_answer:
+                points_count += 1
+    return points_count
+
 
 async def save_profile(user_id, user_data):
     file_path = f'profiles/{user_id}.json'
