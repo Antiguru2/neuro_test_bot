@@ -135,7 +135,7 @@ async def studying(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer(
             text=str(
                 '🔎 Изучите материал.'
-                '\n📝 За тем пройдите тестирование'
+                '\n📝 Затем пройдите тестирование'
             ),
             show_alert=True,
         )
