@@ -20,6 +20,7 @@ from aiogram.filters import (
     Command, 
 )
 
+from interfaces import test_interface as interface
 from main import (
     utils as main_utils,
     keyboards as main_keyboards,
@@ -51,17 +52,18 @@ async def start(message: types.Message, state: FSMContext):
         if not os.path.exists('profiles'):
             os.mkdir('profiles')
 
-        file_path = f'profiles/{from_user_id}.js'
+        file_path = f'profiles/{from_user_id}.json'
         
         if os.path.exists(file_path):
             async with aiofiles.open(file_path, mode='r') as f:
                 user_data = json.loads(await f.read())
-                await state.update_data(user_data=user_data)
-
         else:
             start_of_use = int(datetime.now().timestamp())
             async with aiofiles.open(file_path, mode='w') as f:
-                await f.write(json.dumps({'start_of_use': start_of_use}))
+                user_data = {'start_of_use': start_of_use}
+                await f.write(json.dumps(user_data))
+
+        await state.update_data(user_data=user_data)
 
         training_status = user_data.get('training_status', False)
 
@@ -113,19 +115,21 @@ async def studying(callback: types.CallbackQuery, state: FSMContext):
     '''
         Запускает обучение
     '''
+    print('studying')
     # Проверяем может ли пользователь использовать бота
     from_user_id = callback.message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(callback.message, from_user_id)
   
     if user_is_allowed:
         await state.set_state(MainStatesGroup.studying)   
+        state_data = await state.get_data()
 
-        last_stage = await main_utils.get_last_stage(state)
+        stage_num = state_data.get('stage_num', 1)
+        if stage_num == 1:
+            await state.update_data(stage_num=stage_num)
 
-        stage_line_numbers = main_utils.get_stage_line_numbers_list()
+        stage_content = main_utils.get_stage_content_by_number(stage_num)
 
-        stage_content = main_utils.get_stage_content_by_number(last_stage)
-        # print('stage_content', stage_content)  
         await main_utils.delete_previous_messages(bot, callback.message, state)
 
         await callback.answer(
@@ -148,52 +152,141 @@ async def studying(callback: types.CallbackQuery, state: FSMContext):
             await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])  
 
 
-@main_router.callback_query(
-    F.data == 'go_to_testing',
-)
-async def studying(callback: types.CallbackQuery, state: FSMContext):
+async def testing(message: types.Message, state: FSMContext):
     '''
         Запускает тестирование
     '''
+    print('testing')  
+    # Проверяем может ли пользователь использовать бота
+    from_user_id = message.chat.id
+    user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
+  
+    if user_is_allowed:
+        await state.set_state(MainStatesGroup.testing)   
+
+        state_data = await state.get_data()
+        stage_num = state_data.get('stage_num')
+        question_num = state_data.get('question_num', 1)    
+        if question_num == 1:
+            await state.update_data(question_num=question_num)           
+
+        question_data = await main_utils.get_question_data(stage_num - 1 , question_num - 1) 
+        # print('question_data', question_data) 
+
+        await main_utils.delete_previous_messages(bot, message, state)
+
+        message_data = {
+            'text': question_data.get('question_text'),    
+            'chat_id': from_user_id,
+            'parse_mode': 'html',
+            'reply_markup': main_keyboards.get_question_keyboard(question_data.get('answers')),
+        }  
+        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+
+        if is_sent:
+            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+
+
+@main_router.callback_query(
+    F.data == 'go_to_testing',
+)
+async def testing_router(callback: types.CallbackQuery, state: FSMContext):
+    '''
+        Запускает тестирование
+    '''
+    await testing(callback.message, state)
+
+
+@main_router.callback_query(
+    MainStatesGroup.testing,
+    F.data.split('__')[0] == 'answer',
+)
+async def verification(callback: types.CallbackQuery, state: FSMContext):
+    '''
+        Проверяет тестирование
+    '''
+    print('verification')  
     # Проверяем может ли пользователь использовать бота
     state_data = await state.get_data()
     from_user_id = callback.message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(callback.message, from_user_id)
   
     if user_is_allowed:
-        await state.set_state(MainStatesGroup.testing)   
+        answer_index = int(callback.data.split('__')[1])
 
-        last_stage = await main_utils.get_last_stage(state)        
-        last_question_num = state_data.get('last_question_num', 0)
-
-        question_data = await main_utils.get_question_data(last_stage, last_question_num) 
-
-        # print('question_data', question_data)
+        state_data = await state.get_data()
+        stage_num = state_data.get('stage_num')
+        question_num = state_data.get('question_num')     
 
 
+        question_data = await main_utils.get_question_data(stage_num - 1, question_num - 1) 
+
+        is_correct_answer = False
+        answer = question_data.get('answers')[answer_index]
+        if question_data.get('correct_answer') == answer:
+            is_correct_answer = True
+
+        user_data: dict = state_data.get("user_data")
+        studying_history: list = user_data.get('studying_history', [])
+        stage_history = []
+        if studying_history:
+            stage_history: list = studying_history.pop(stage_num - 1)
+        
+        stage_history.append({'is_correct_answer': is_correct_answer})
+
+        studying_history.insert(stage_num - 1, stage_history)
+
+        user_data['studying_history'] = studying_history
+        await state.update_data(user_data=user_data)
+        await main_utils.save_profile(from_user_id, user_data)
+        stage_questions_data = await main_utils.get_stage_questions_data(stage_num - 1) 
+
+        if question_num < len(stage_questions_data):
+            state_data = await state.update_data(
+                question_num=question_num + 1
+            )
+            await testing(callback.message, state)
 
 
-        stage_line_numbers = main_utils.get_stage_line_numbers_list()
+@main_router.message(
+    MainStatesGroup.testing,
+)
+async def verification(message: types.Message, state: FSMContext):
+    '''
+        Проверяет тестирование
+    '''
+    print('verification')  
+    # Проверяем может ли пользователь использовать бота
+    from_user_id = message.chat.id
+    user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
+  
+    if user_is_allowed:
+        answer = message.text
+        state_data = await state.get_data()
+        stage_num = state_data.get('stage_num')
+        question_num = state_data.get('question_num')     
 
-        stage_content = main_utils.get_stage_content_by_number(last_stage)
-        # print('stage_content', stage_content)  
-        await main_utils.delete_previous_messages(bot, callback.message, state)
+        question_data = await main_utils.get_question_data(stage_num - 1, question_num - 1) 
 
-        await callback.answer(
-            text=str(
-                '🔎 Изучите материал.'
-                '📝 За тем пройдите тестирование'
-            ),
-            show_alert=True,
-        )
+        is_correct_answer = await interface.verification_correct_answer(question_data, answer)
 
-        message_data = {
-            'text': stage_content,    
-            'chat_id': from_user_id,
-            'parse_mode': 'html',
-            'reply_markup': main_keyboards.get_studying_keyboard(),
-        }  
-        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+        user_data: dict = state_data.get("user_data")
+        studying_history: list = user_data.get('studying_history', [])
+        stage_history = []
+        if studying_history:
+            stage_history: list = studying_history.pop(stage_num - 1)
+        
+        stage_history.append({'is_correct_answer': is_correct_answer})
 
-        if is_sent:
-            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+        studying_history.insert(stage_num - 1, stage_history)
+
+        user_data['studying_history'] = studying_history
+        await state.update_data(user_data=user_data)
+        await main_utils.save_profile(from_user_id, user_data)
+        stage_questions_data = await main_utils.get_stage_questions_data(stage_num - 1) 
+
+        if question_num < len(stage_questions_data):
+            state_data = await state.update_data(
+                question_num=question_num + 1
+            )
+            await testing(message, state) 

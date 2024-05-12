@@ -19,3 +19,6 @@ def get_questions_data():
         questions_data = json.loads(file.read())
 
     return questions_data  
+
+async def verification_correct_answer(question_data, answer):
+    return True

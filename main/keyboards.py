@@ -1,5 +1,7 @@
 import asyncio
 
+from typing import Optional
+
 from aiogram import (
     Bot,
     types, 
@@ -80,4 +82,27 @@ def get_studying_keyboard():
     builder.row(types.InlineKeyboardButton(
             text='Перейти к тестированию 📝', callback_data=f"go_to_testing",
     ))
+    return builder.as_markup()
+
+
+def get_question_keyboard(answers: list) -> Optional[types.InlineKeyboardMarkup]:
+    '''
+        Возвращает первую клавиатуру
+    '''
+    builder = InlineKeyboardBuilder()
+    if answers:
+        builder.row(
+            types.InlineKeyboardButton(
+            text=answers[0], callback_data=f"answer__0",
+            ), types.InlineKeyboardButton(
+            text=answers[1], callback_data=f"answer__1",
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+            text=answers[2], callback_data=f"answer__2",
+            ), types.InlineKeyboardButton(
+            text=answers[3], callback_data=f"answer__3",
+            )
+        )        
     return builder.as_markup()

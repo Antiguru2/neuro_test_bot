@@ -1,6 +1,8 @@
 import os
 import re
+import json
 import requests
+import aiofiles
 
 from dotenv import load_dotenv
 
@@ -169,10 +171,10 @@ def get_stage_line_numbers_list() -> list:
     return stage_line_numbers
 
 
-def get_stage_content_by_number(stage_number: int) -> str:
+def get_stage_content_by_number(stage_num: int) -> str:
     content = interface.get_knowledge_base()
 
-    pattern = rf'# {stage_number} этап обучения\n(.*?)(?=\n# |\Z)'
+    pattern = rf'# {stage_num} этап обучения\n(.*?)(?=\n# |\Z)'
     stage_match = re.search(pattern, content, re.DOTALL)
 
     if stage_match:
@@ -181,30 +183,51 @@ def get_stage_content_by_number(stage_number: int) -> str:
         return "Этап обучения не найден"
     
 
-async def get_last_stage(state: FSMContext,) -> int:
+async def get_last_stage_index_and_last_question_index(state: FSMContext) -> tuple:
     state_data = await state.get_data()
     user_data = state_data.get('user_data')
-    last_stage = 0
+    last_stage_index = None
+    last_question_index = None
+    print('user_data', user_data) 
     if user_data:
         studying_history = user_data.get('studying_history')
+        print('studying_history', studying_history) 
         if studying_history:
-            last_stage = len(last_stage) 
+            last_stage_index = len(studying_history) - 1
+            print('last_stage_index', last_stage_index) 
+            last_stage = studying_history[last_stage_index]
+            print('last_stage', last_stage) 
+            if last_stage:
+                last_question_index = len(last_stage) - 1
+                print('last_question_index', last_question_index) 
+
+    # print('last_stage_index', last_stage_index)    
+    # print('last_question_index', last_question_index)    
+    return last_stage_index, last_question_index
+
+
+async def get_stage_questions_data(stage_num) -> list:
+    stage_questions_data = []
+    questions_data = interface.get_questions_data()
+    if questions_data:
+        stage_questions_data = questions_data[stage_num]
     
-    return last_stage
+    return stage_questions_data
 
 
 async def get_question_data(stage_num, question_num) -> dict:
     question_data = {}
-    questions_data = interface.get_questions_data()
-    print('questions_data', questions_data)
-    if questions_data:
-        stage_questions_data = questions_data[stage_num]
-        print('stage_questions_data', stage_questions_data)
-        if stage_questions_data:
-            question_data = stage_questions_data[question_num]
-            print('question_data', question_data)
+    stage_questions_data = await get_stage_questions_data(stage_num)
+    if stage_questions_data:
+        question_data = stage_questions_data[question_num]
     
     return question_data
+
+
+async def save_profile(user_id, user_data):
+    file_path = f'profiles/{user_id}.json'
+    async with aiofiles.open(file_path, mode='w') as f:
+        await f.write(json.dumps(user_data))
 
 
 def send_message_about_error(error_text, name_sender='None', error_data=None, error_data_is_traceback=False, to_fix=False):
