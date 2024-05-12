@@ -188,21 +188,14 @@ async def get_last_stage_index_and_last_question_index(state: FSMContext) -> tup
     user_data = state_data.get('user_data')
     last_stage_index = None
     last_question_index = None
-    print('user_data', user_data) 
     if user_data:
         studying_history = user_data.get('studying_history')
-        print('studying_history', studying_history) 
         if studying_history:
             last_stage_index = len(studying_history) - 1
-            print('last_stage_index', last_stage_index) 
             last_stage = studying_history[last_stage_index]
-            print('last_stage', last_stage) 
             if last_stage:
                 last_question_index = len(last_stage) - 1
-                print('last_question_index', last_question_index) 
-
-    # print('last_stage_index', last_stage_index)    
-    # print('last_question_index', last_question_index)    
+ 
     return last_stage_index, last_question_index
 
 
@@ -281,8 +274,6 @@ def send_message_about_error(error_text, name_sender='None', error_data=None, er
             response = requests.post(url, data, files=file).json()
         else:
             response = requests.post(url, data).json()
-        # print(response)
-        # print(text_for_telegram)
 
         if to_fix:
             message_id = response['result']['message_id']

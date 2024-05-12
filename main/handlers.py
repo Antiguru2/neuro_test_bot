@@ -12,6 +12,7 @@ from aiogram import (
     Router, 
     F, 
     types, 
+    exceptions,
 )
 from aiogram.fsm.context import (
     FSMContext,
@@ -92,7 +93,7 @@ async def start(message: types.Message, state: FSMContext):
 
 
 @main_router.message(Command("menu"))
-async def start(message: types.Message, state: FSMContext):
+async def menu(message: types.Message, state: FSMContext):
     '''
         Выходит в меню
     '''
@@ -112,7 +113,6 @@ async def studying(message: types.Message, state: FSMContext):
     '''
         Запускает обучение
     '''
-    print('studying')
     # Проверяем может ли пользователь использовать бота
     from_user_id = message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
@@ -129,15 +129,21 @@ async def studying(message: types.Message, state: FSMContext):
 
         await main_utils.delete_previous_messages(bot, message, state)
 
-        await bot.answer_callback_query(
-            state_data.get('last_callback_id'),
-            text=str(
-                f'{stage_num} этап'
-                '\n🔎 Изучите материал.'
-                '\n📝 Затем пройдите тестирование'
-            ),
-            show_alert=True,            
-        )
+        try:
+            await bot.answer_callback_query(
+                state_data.get('last_callback_id'),
+                text=str(
+                    f'{stage_num} этап'
+                    '\n🔎 Изучите материал.'
+                    '\n📝 Затем пройдите тестирование'
+                ),
+                show_alert=True,            
+            )
+        except exceptions.TelegramBadRequest:
+            main_utils.send_message_about_error(
+                'Не получилось отправить answer_callback_query',
+                'antiguru_sender_bot',
+            )
 
         message_data = {
             'text': stage_content,    
@@ -158,7 +164,7 @@ async def studying_router(callback: types.CallbackQuery, state: FSMContext):
     '''
         Запускает обучение
     '''
-    state_data = await state.update_data(
+    await state.update_data(
         last_callback_id=callback.id
     )
     await studying(callback.message, state)
@@ -168,7 +174,6 @@ async def testing(message: types.Message, state: FSMContext):
     '''
         Запускает тестирование
     '''
-    print('testing')  
     # Проверяем может ли пользователь использовать бота
     from_user_id = message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
@@ -183,7 +188,6 @@ async def testing(message: types.Message, state: FSMContext):
             await state.update_data(question_num=question_num)           
 
         question_data = await main_utils.get_question_data(stage_num - 1 , question_num - 1) 
-        # print('question_data', question_data) 
 
         await main_utils.delete_previous_messages(bot, message, state)
 
@@ -206,6 +210,9 @@ async def testing_router(callback: types.CallbackQuery, state: FSMContext):
     '''
         Запускает тестирование
     '''
+    await state.update_data(
+        last_callback_id=callback.id
+    )    
     await testing(callback.message, state)
 
 
@@ -217,7 +224,6 @@ async def verification(callback: types.CallbackQuery, state: FSMContext):
     '''
         Проверяет тестирование
     '''
-    print('verification')  
     # Проверяем может ли пользователь использовать бота
     state_data = await state.update_data(
         last_callback_id=callback.id
@@ -242,7 +248,6 @@ async def verification(callback: types.CallbackQuery, state: FSMContext):
         user_data: dict = state_data.get("user_data")
         studying_history: list = user_data.get('studying_history', [])
         stage_history = []
-        print('studying_history', studying_history)
         if studying_history:
             try:
                 stage_history: list = studying_history.pop(stage_num - 1)
@@ -272,7 +277,6 @@ async def verification(message: types.Message, state: FSMContext):
     '''
         Проверяет тестирование
     '''
-    print('verification')  
     # Проверяем может ли пользователь использовать бота
     from_user_id = message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
@@ -308,8 +312,6 @@ async def verification(message: types.Message, state: FSMContext):
             )
             await testing(message, state) 
         else:
-            print('stage_num', stage_num)
-            print('len(studying_history)', len(studying_history))
             questions_data = interface.get_questions_data()
             if stage_num < len(questions_data):
                 await state.update_data(
