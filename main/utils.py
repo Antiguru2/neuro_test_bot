@@ -5,6 +5,7 @@ import requests
 import aiofiles
 
 from dotenv import load_dotenv
+from pprint import pprint
 
 from aiogram.fsm.context import FSMContext
 from aiogram import (
@@ -21,6 +22,7 @@ allowed_users_list = os.getenv('ALLOUWED_USERS', '').split(",")
 
 TELEGRAM_BOT_FOR_SEND_ERRORS_TOKEN = os.getenv('TELEGRAM_BOT_FOR_SEND_ERRORS_TOKEN')
 CHANNEL_FOR_SEND_ERRORS_ID = os.getenv('CHANNEL_FOR_SEND_ERRORS_ID')  
+WEB_APP_PATH = os.getenv('WEB_APP_PATH')  
 
 
 async def try_message_delete(message: types.Message):
@@ -97,6 +99,8 @@ async def send_message(
         message_data.pop('message_id')
 
     if message_data:
+        # print('message_data')
+        # pprint(message_data)
         message = await bot.send_message(**message_data)
     if message:
         is_send = True
@@ -136,9 +140,16 @@ async def edit_message(
     return message, is_edit
 
 
-async def user_is_allowed(message, user_id=None):
+async def user_is_allowed(message, user_id=None, state=None):
     if not user_id:
         user_id = message.from_user.id
+
+    if state:
+        state_data = await state.get_data() 
+        user_data = state_data.get('user_data')
+        registration_status = user_data.get('registration_status')
+        if registration_status:
+            return True
 
     if str(user_id) not in allowed_users_list:
         await message.answer("""
@@ -197,20 +208,29 @@ async def get_last_stage_index_and_last_question_index(state: FSMContext) -> tup
                 last_question_index = len(last_stage) - 1
  
     return last_stage_index, last_question_index
+ 
 
-
-async def get_stage_questions_data(stage_num) -> list:
-    stage_questions_data = []
+async def get_course_questions_data(courses_slugs) -> list:
+    courses_questions_data = []
     questions_data = interface.get_questions_data()
     if questions_data:
-        stage_questions_data = questions_data[stage_num]
+        courses_questions_data = questions_data.get(courses_slugs)    
+    return courses_questions_data
+
+
+async def get_stage_questions_data(courses_slugs, stage_num) -> list:
+    stage_questions_data = []
+
+    courses_questions_data = await get_course_questions_data(courses_slugs)
+    if courses_questions_data:
+        stage_questions_data = courses_questions_data[stage_num].get('questions')
     
     return stage_questions_data
 
 
-async def get_question_data(stage_num, question_num) -> dict:
+async def get_question_data(courses_slugs, stage_num, question_num) -> dict:
     question_data = {}
-    stage_questions_data = await get_stage_questions_data(stage_num)
+    stage_questions_data = await get_stage_questions_data(courses_slugs, stage_num)
     if stage_questions_data:
         question_data = stage_questions_data[question_num]
     
@@ -230,6 +250,14 @@ async def save_profile(user_id, user_data):
     file_path = f'profiles/{user_id}.json'
     async with aiofiles.open(file_path, mode='w') as f:
         await f.write(json.dumps(user_data))
+
+
+def get_stage_slug(course_slug, stage_num):
+    questions_data = interface.get_questions_data()
+    courses_data = questions_data[course_slug]
+    stage_data = courses_data[stage_num - 1]
+    course_slug = stage_data.get('slug')
+    return course_slug
 
 
 def send_message_about_error(error_text, name_sender='None', error_data=None, error_data_is_traceback=False, to_fix=False):

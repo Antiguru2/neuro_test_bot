@@ -35,6 +35,7 @@ from aiogram.fsm import state
 load_dotenv()
 
 token = os.getenv('BOT_TOKEN')
+general_rate_slug = os.getenv('GENERAL_RATE_SLUG')
 
 bot = Bot(token=token)
 
@@ -42,6 +43,7 @@ class MainStatesGroup(state.StatesGroup):
     '''
         Основные состояния
     '''
+    registration = state.State()
     studying = state.State()
     testing = state.State()
 

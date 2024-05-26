@@ -1,49 +1,69 @@
-[[{
-    "question_text" : "2*2",
-    "answers" : [
-        "1", 
-        "2", 
-        "3", 
-        "4"
-    ],
-    "correct_answer": "4"
-},{
-    "question_text" : "Сколько рук у бабочки",
-    "answers" : [
-        "23", 
-        "Бард", 
-        "3", 
-        "У бабочки нет рук"
-    ],
-    "correct_answer": "У бабочки нет рук"            
-},{
-    "question_text" : "Что делал слон,когда пришёл наполеон?",
-    "correct_answer": "Травку жевал"
-},{
-    "question_text" : "Сидит дед \nВо сто шуб одет, \nКто его раздевает, \nТот слезы проливает.",
-    "correct_answer": "Лук"            
-}],[{
-    "question_text" : "2*3",
-    "answers" : [
-        "H", 
-        "2", 
-        "6", 
-        "4"
-    ],
-    "correct_answer": "6"
-},{
-    "question_text" : "Кто открыл Америку",
-    "answers" : [
-        "Самолет", 
-        "Колумб", 
-        "Индейцы", 
-        "Инки"
-    ],
-    "correct_answer": "Колумб"            
-},{
-    "question_text" : "Почему самолет летает?",
-    "correct_answer": "По небу."
-},{
-    "question_text" : "Зачем в стеклянном графине вода?",
-    "correct_answer": "За стеклом"            
-}]]
+{
+    "common_course": [
+        {
+            "slug": "sozdaniye_vneshnego_otcheta_1C_8",
+            "questions": [
+                {
+                    "question_text": "2*2",
+                    "answers": [
+                        "1",
+                        "2",
+                        "3",
+                        "4"
+                    ],
+                    "correct_answer": "4"
+                },
+                {
+                    "question_text": "Сколько рук у бабочки",
+                    "answers": [
+                        "23",
+                        "Бард",
+                        "3",
+                        "У бабочки нет рук"
+                    ],
+                    "correct_answer": "У бабочки нет рук"
+                },
+                {
+                    "question_text": "Что делал слон,когда пришёл наполеон?",
+                    "correct_answer": "Травку жевал"
+                },
+                {
+                    "question_text": "Сидит дед \nВо сто шуб одет, \nКто его раздевает, \nТот слезы проливает.",
+                    "correct_answer": "Лук"
+                }
+            ]
+        },
+        {
+            "questions": [
+                {
+                    "question_text": "2*3",
+                    "answers": [
+                        "H",
+                        "2",
+                        "6",
+                        "4"
+                    ],
+                    "correct_answer": "6"
+                },
+                {
+                    "question_text": "Кто открыл Америку",
+                    "answers": [
+                        "Самолет",
+                        "Колумб",
+                        "Индейцы",
+                        "Инки"
+                    ],
+                    "correct_answer": "Колумб"
+                },
+                {
+                    "question_text": "Почему самолет летает?",
+                    "correct_answer": "По небу."
+                },
+                {
+                    "question_text": "Зачем в стеклянном графине вода?",
+                    "correct_answer": "За стеклом"
+                }
+            ]
+        }
+    ]
+}

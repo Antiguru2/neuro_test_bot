@@ -1,5 +1,7 @@
+import os
 import asyncio
 
+from dotenv import load_dotenv
 from typing import Optional
 
 from aiogram import (
@@ -10,6 +12,9 @@ from aiogram.utils.keyboard import (
     InlineKeyboardBuilder,
 )
 
+load_dotenv()
+
+WEB_APP_PATH = os.getenv('WEB_APP_PATH') 
 
 
 async def send_then_delete(
@@ -43,35 +48,32 @@ def get_button_back():
     return button_back
 
 
-def get_web_app():
+def get_web_app_keyboard(url: str ='https://basestore.site/', text: str = 'web_app'):
     '''
         Возвращает кнопку назад
     '''
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(
-        text='web_app', 
+        text=text, 
         web_app=types.WebAppInfo(
-            url='https://basestore.site/',
+            url=url,
         )
     ))
     return builder.as_markup()
 
 
-def get_menu_keyboard(training_status):
+def get_menu_keyboard(course_slug, stage_slug, training_status):
     '''
         Возвращает первую клавиатуру
     '''
     builder = InlineKeyboardBuilder()
     if training_status != 'finished':
+        url = f"{WEB_APP_PATH}{course_slug}/{stage_slug}/"
+        text = "Продолжить обучение 👩‍🏫"
         if not training_status:
             text = "Приступить к обучению 👩‍🏫"
-        else:
-            text = "Продолжить обучение 👩‍🏫"
 
-        builder.row(types.InlineKeyboardButton(
-            text=text, callback_data=f"studying",
-        ))
-    return builder.as_markup()
+    return get_web_app_keyboard(url=url, text=text)
 
 
 def get_studying_keyboard():
@@ -93,16 +95,82 @@ def get_question_keyboard(answers: list) -> Optional[types.InlineKeyboardMarkup]
     if answers:
         builder.row(
             types.InlineKeyboardButton(
-            text=answers[0], callback_data=f"answer__0",
+                text=answers[0], callback_data=f"answer__0",
             ), types.InlineKeyboardButton(
-            text=answers[1], callback_data=f"answer__1",
+                text=answers[1], callback_data=f"answer__1",
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-            text=answers[2], callback_data=f"answer__2",
+                text=answers[2], callback_data=f"answer__2",
             ), types.InlineKeyboardButton(
-            text=answers[3], callback_data=f"answer__3",
+                text=answers[3], callback_data=f"answer__3",
             )
         )        
     return builder.as_markup()
+
+REGISTRATION_DATA = [
+    {   
+        "slug": "departament",
+        "text": "Выберите ваш отдел 🏢",
+        "buttons": [
+            {
+                "name": "Бугартерия 🧮",
+                "slug": "accounting",
+            },{
+                "name": "Менеджмент 📊",
+                "slug": "management",
+            },
+        ]
+    },
+    {   
+        "slug": "password",
+        "text": "Введите пароль 🔑",
+        "buttons": []
+    },
+    {   
+        "slug": "full_name",
+        "text": "Введите ФИО 📇",
+        "buttons": []
+    },
+]
+
+PASSWORD_DATA = [
+    { 
+        "departament": "accounting",
+        "passwords": [
+            "1111"
+        ]
+    },
+    { 
+        "departament": "management",
+        "passwords": [
+            "2222"
+        ]
+    },
+]
+
+
+
+def get_registration_keyboard(registration_stage: int) -> Optional[types.InlineKeyboardMarkup]:
+    '''
+        Возвращает клавиатуру для регистрации
+    '''
+    builder = InlineKeyboardBuilder()
+    reg_stage_data = REGISTRATION_DATA[registration_stage]
+    # print("reg_stage_data", reg_stage_data)
+
+    buttons = reg_stage_data.get('buttons')
+    if buttons:
+        for button in buttons:
+            text = button.get('name')
+            slug = button.get('slug')
+
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=text, callback_data=slug,
+                ),
+            )  
+        return builder.as_markup()
+    else:
+        return None
