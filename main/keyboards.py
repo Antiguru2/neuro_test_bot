@@ -48,17 +48,25 @@ def get_button_back():
     return button_back
 
 
-def get_web_app_keyboard(url: str ='https://basestore.site/', text: str = 'web_app'):
+def get_web_app_button(url: str ='https://basestore.site/', text: str = 'web_app'):
     '''
-        Возвращает кнопку назад
+        Возвращает кнопку web_app
     '''
-    builder = InlineKeyboardBuilder()
-    builder.row(types.InlineKeyboardButton(
+    button = types.InlineKeyboardButton(
         text=text, 
         web_app=types.WebAppInfo(
             url=url,
         )
-    ))
+    )
+    return button
+
+
+def get_web_app_keyboard(url: str ='https://basestore.site/', text: str = 'web_app'):
+    '''
+        Возвращает клавиатуру web_app
+    '''
+    builder = InlineKeyboardBuilder()
+    builder.row(get_web_app_button(url, text))
     return builder.as_markup()
 
 
@@ -67,13 +75,20 @@ def get_menu_keyboard(course_slug, stage_slug, training_status):
         Возвращает первую клавиатуру
     '''
     builder = InlineKeyboardBuilder()
+
+    builder.row(types.InlineKeyboardButton(
+            text='Перейти к тестированию 📝', callback_data=f"go_to_testing",
+    ))
     if training_status != 'finished':
+
         url = f"{WEB_APP_PATH}{course_slug}/{stage_slug}/"
         text = "Продолжить обучение 👩‍🏫"
         if not training_status:
             text = "Приступить к обучению 👩‍🏫"
 
-    return get_web_app_keyboard(url=url, text=text)
+        builder.row(get_web_app_button(url, text))
+
+    return builder.as_markup()
 
 
 def get_studying_keyboard():

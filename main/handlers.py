@@ -380,7 +380,7 @@ async def verification(message: types.Message, state: FSMContext):
         stage_history.append({'is_correct_answer': is_correct_answer})
         course_history.insert(stage_num - 1, stage_history)
         studying_history[course_slug] = course_history
-        print('studying_history', studying_history)
+        # print('studying_history', studying_history)
 
         user_data['studying_history'] = studying_history
         await state.update_data(user_data=user_data)
@@ -394,7 +394,7 @@ async def verification(message: types.Message, state: FSMContext):
             await testing(message, state) 
         else:
             questions_data = interface.get_questions_data()
-            if stage_num < len(questions_data):
+            if stage_num <= len(questions_data):
                 await state.update_data(
                     stage_num=stage_num + 1,
                     question_num=1,
@@ -404,7 +404,8 @@ async def verification(message: types.Message, state: FSMContext):
 
             else:
                 text = str(
-                    f"\n\nВы набрали {main_utils.get_points_count(studying_history)} балов"
+                    f"\n\nВы набрали ... балов"
+                    # f"\n\nВы набрали {main_utils.get_points_count(studying_history)} балов"
                 )
                 completed_course_slugs_list:list = user_data.get('completed_course_slugs_list', [])
                 completed_course_slugs_list.append(course_slug)
