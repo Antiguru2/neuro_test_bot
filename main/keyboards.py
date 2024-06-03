@@ -76,11 +76,7 @@ def get_menu_keyboard(course_slug, stage_slug, training_status):
     '''
     builder = InlineKeyboardBuilder()
 
-    builder.row(types.InlineKeyboardButton(
-            text='Перейти к тестированию 📝', callback_data=f"go_to_testing",
-    ))
     if training_status != 'finished':
-
         url = f"{WEB_APP_PATH}{course_slug}/{stage_slug}/"
         text = "Продолжить обучение 👩‍🏫"
         if not training_status:
@@ -88,6 +84,10 @@ def get_menu_keyboard(course_slug, stage_slug, training_status):
 
         builder.row(get_web_app_button(url, text))
 
+    builder.row(types.InlineKeyboardButton(
+            text='Перейти к тестированию 📝', callback_data=f"go_to_testing",
+    ))
+    
     return builder.as_markup()
 
 
