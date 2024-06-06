@@ -56,7 +56,7 @@ def get_web_app_button(url: str ='https://basestore.site/', text: str = 'web_app
         text=text, 
         web_app=types.WebAppInfo(
             url=url,
-        )
+        ),
     )
     return button
 
@@ -84,9 +84,9 @@ def get_menu_keyboard(course_slug, stage_slug, training_status):
 
         builder.row(get_web_app_button(url, text))
 
-    builder.row(types.InlineKeyboardButton(
-            text='Перейти к тестированию 📝', callback_data=f"go_to_testing",
-    ))
+        builder.row(types.InlineKeyboardButton(
+                text='Перейти к тестированию 📝', callback_data=f"go_to_testing",
+        ))
     
     return builder.as_markup()
 
@@ -135,6 +135,9 @@ REGISTRATION_DATA = [
             },{
                 "name": "Менеджмент 📊",
                 "slug": "management",
+            },{
+                "name": "Оптовый отдел 📦",
+                "slug": "wholesaler",
             },
         ]
     },
@@ -156,11 +159,15 @@ PASSWORD_DATA = [
         "passwords": [
             "1111"
         ]
-    },
-    { 
+    },{ 
         "departament": "management",
         "passwords": [
             "2222"
+        ]
+    },{ 
+        "departament": "wholesaler",
+        "passwords": [
+            "3333"
         ]
     },
 ]

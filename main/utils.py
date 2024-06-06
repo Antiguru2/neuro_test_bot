@@ -182,10 +182,10 @@ def get_stage_line_numbers_list() -> list:
     return stage_line_numbers
 
 
-def get_stage_content_by_number(stage_num: int) -> str:
+def get_stage_content_by_number(stage_index: int) -> str:
     content = interface.get_knowledge_base()
 
-    pattern = rf'# {stage_num} этап обучения\n(.*?)(?=\n# |\Z)'
+    pattern = rf'# {stage_index} этап обучения\n(.*?)(?=\n# |\Z)'
     stage_match = re.search(pattern, content, re.DOTALL)
 
     if stage_match:
@@ -218,19 +218,19 @@ async def get_course_questions_data(courses_slugs) -> list:
     return courses_questions_data
 
 
-async def get_stage_questions_data(courses_slugs, stage_num) -> list:
+async def get_stage_questions_data(courses_slugs, stage_index) -> list:
     stage_questions_data = []
 
     courses_questions_data = await get_course_questions_data(courses_slugs)
     if courses_questions_data:
-        stage_questions_data = courses_questions_data[stage_num].get('questions')
+        stage_questions_data = courses_questions_data[stage_index].get('questions')
     
     return stage_questions_data
 
 
-async def get_question_data(courses_slugs, stage_num, question_num) -> dict:
+async def get_question_data(courses_slugs, stage_index, question_num) -> dict:
     question_data = {}
-    stage_questions_data = await get_stage_questions_data(courses_slugs, stage_num)
+    stage_questions_data = await get_stage_questions_data(courses_slugs, stage_index)
     if stage_questions_data:
         question_data = stage_questions_data[question_num]
     
@@ -252,12 +252,34 @@ async def save_profile(user_id, user_data):
         await f.write(json.dumps(user_data))
 
 
-def get_stage_slug(course_slug, stage_num):
+def get_stage_slug(course_slug, stage_index):
     questions_data = interface.get_questions_data()
     courses_data = questions_data[course_slug]
-    stage_data = courses_data[stage_num - 1]
+    stage_data = courses_data[stage_index - 1]
     course_slug = stage_data.get('slug')
     return course_slug
+
+
+def get_completed_course_slugs_list(user_data: dict) -> list:
+    completed_course_slugs = []
+    studying_history = user_data.get('studying_history', {})
+    for course_slug in studying_history.keys():
+        completed_course_slugs.append(course_slug)
+
+    return completed_course_slugs
+
+
+def get_total_balls(user_data: dict) -> int:
+    total_balls = 0
+    studying_history = user_data.get('studying_history', {})
+    for course_data in studying_history.values():
+        for state_data in course_data:
+            for answer_data in state_data:
+                answer_data = answer_data.get('is_correct_answer', False)
+                if answer_data:
+                    total_balls += 1
+                    
+    return total_balls
 
 
 def send_message_about_error(error_text, name_sender='None', error_data=None, error_data_is_traceback=False, to_fix=False):
