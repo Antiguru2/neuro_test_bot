@@ -95,18 +95,21 @@ async def start(message: types.Message, state: FSMContext):
             text += "\n\nВы уже закончили обучение можете задавать вопросы нейро-консультанту 👨‍🔬"
         else:
 
-            completed_course_slugs_list = user_data.get('completed_course_slugs_list', [])
+            completed_course_slugs_list: list = user_data.get('completed_course_slugs_list', [])
 
             if len(completed_course_slugs_list) == 0:
                 course_slug = general_rate_slug
 
             if len(completed_course_slugs_list) == 1:
-                course_slug = user_data.get('departament')        
+                course_slug = user_data.get('departament')     
+
+            # print('course_slug', course_slug)   
+            # print('completed_course_slugs_list', completed_course_slugs_list)   
 
             await state.update_data(course_slug=course_slug)
-            stage_num = 1
-            await state.update_data(stage_num=stage_num)
-            stage_slug = main_utils.get_stage_slug(course_slug, stage_num)
+            stage_index = 1
+            await state.update_data(stage_index=stage_index)
+            stage_slug = main_utils.get_stage_slug(course_slug, stage_index)
 
             text += "\n\nПосле прохождения обучения вам будет доступен нейро-консультант 👨‍🔬, он поможет вам в вопросах по теме."
 
@@ -143,9 +146,15 @@ async def registration(message: types.Message, state: FSMContext):
     
     if registration_stage + 1 > 3:
         user_data = state_data.get('user_data')
+        username = message.text
+        
         user_data['registration_status'] = True
+        user_data['departament'] = departament
+        user_data['username'] = username
+
         await state.update_data(user_data=user_data)
         await main_utils.save_profile(from_user_id, user_data)
+
         await state.set_state(MainStatesGroup.studying) 
         await start(message, state)
         return
@@ -223,8 +232,8 @@ async def menu(message: types.Message, state: FSMContext):
 )
 async def web_app(message: types.Message, state: FSMContext):
     web_app_data = message.web_app_data    
-    # if web_app_data.data == 'done':
     print("web_app_data.data", web_app_data.data)
+    # if web_app_data.data == 'done':
 
     await state.set_state(MainStatesGroup.testing)   
     await testing(message, state)
@@ -250,13 +259,24 @@ async def testing(message: types.Message, state: FSMContext):
         await state.set_state(MainStatesGroup.testing)   
         state_data = await state.get_data()
         user_data = state_data.get('user_data')
-        course_slug = state_data.get('course_slug')
-        stage_num = state_data.get('stage_num')
-        question_num = state_data.get('question_num', 1)    
+        stage_index = state_data.get('stage_index', 1)
+        question_num = state_data.get('question_num', 1)  
+        # print('stage_index', stage_index)
         if question_num == 1:
-            await state.update_data(question_num=question_num)           
+            await state.update_data(question_num=question_num)   
 
-        question_data = await main_utils.get_question_data(course_slug, stage_num - 1 , question_num - 1) 
+
+        completed_course_slugs_list: list = user_data.get('completed_course_slugs_list', [])
+
+        if len(completed_course_slugs_list) == 0:
+            course_slug = general_rate_slug
+
+        if len(completed_course_slugs_list) == 1:
+            course_slug = user_data.get('departament')   
+
+        await state.update_data(course_slug=course_slug)
+
+        question_data = await main_utils.get_question_data(course_slug, stage_index - 1 , question_num - 1) 
 
         await main_utils.delete_previous_messages(bot, message, state)
 
@@ -305,11 +325,11 @@ async def verification(callback: types.CallbackQuery, state: FSMContext):
         answer_index = int(callback.data.split('__')[1])
 
         course_slug = state_data.get('course_slug')
-        stage_num = state_data.get('stage_num')
+        stage_index = state_data.get('stage_index')
         question_num = state_data.get('question_num')     
 
 
-        question_data = await main_utils.get_question_data(course_slug, stage_num - 1, question_num - 1) 
+        question_data = await main_utils.get_question_data(course_slug, stage_index - 1, question_num - 1) 
 
         is_correct_answer = False
         answer = question_data.get('answers')[answer_index]
@@ -323,21 +343,21 @@ async def verification(callback: types.CallbackQuery, state: FSMContext):
         stage_history = []
         if studying_history:
             try:
-                stage_history: list = course_history.pop(stage_num - 1)
+                stage_history: list = course_history.pop(stage_index - 1)
             except IndexError:
                 pass
         
         stage_history.append({'is_correct_answer': is_correct_answer})
-        course_history.insert(stage_num - 1, stage_history)
+        course_history.insert(stage_index - 1, stage_history)
 
         studying_history[course_slug] = course_history
-        print('studying_history', studying_history)
+        # print('studying_history', studying_history)
 
         user_data['studying_history'] = studying_history
         await state.update_data(user_data=user_data)
         await main_utils.save_profile(from_user_id, user_data)
 
-        stage_questions_data = await main_utils.get_stage_questions_data(course_slug, stage_num - 1) 
+        stage_questions_data = await main_utils.get_stage_questions_data(course_slug, stage_index - 1) 
 
         if question_num < len(stage_questions_data):
             state_data = await state.update_data(
@@ -357,15 +377,17 @@ async def verification(message: types.Message, state: FSMContext):
     # print('verification')
     from_user_id = message.chat.id
     user_is_allowed = await main_utils.user_is_allowed(message, from_user_id)
+    await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+    reply_markup = None
   
     if user_is_allowed:
         answer = message.text
         state_data = await state.get_data()
-        stage_num = state_data.get('stage_num')
+        stage_index = state_data.get('stage_index')
         question_num = state_data.get('question_num')     
         course_slug = state_data.get('course_slug')     
 
-        question_data = await main_utils.get_question_data(course_slug, stage_num - 1, question_num - 1) 
+        question_data = await main_utils.get_question_data(course_slug, stage_index - 1, question_num - 1) 
 
         is_correct_answer = await interface.verification_correct_answer(question_data, answer)
 
@@ -375,17 +397,17 @@ async def verification(message: types.Message, state: FSMContext):
 
         stage_history = []
         if course_history:
-            stage_history: list = course_history.pop(stage_num - 1)
+            stage_history: list = course_history.pop(stage_index - 1)
         
         stage_history.append({'is_correct_answer': is_correct_answer})
-        course_history.insert(stage_num - 1, stage_history)
+        course_history.insert(stage_index - 1, stage_history)
         studying_history[course_slug] = course_history
         # print('studying_history', studying_history)
 
         user_data['studying_history'] = studying_history
         await state.update_data(user_data=user_data)
         await main_utils.save_profile(from_user_id, user_data)
-        stage_questions_data = await main_utils.get_stage_questions_data(course_slug, stage_num - 1) 
+        stage_questions_data = await main_utils.get_stage_questions_data(course_slug, stage_index - 1) 
 
         if question_num < len(stage_questions_data):
             await state.update_data(
@@ -393,10 +415,12 @@ async def verification(message: types.Message, state: FSMContext):
             )
             await testing(message, state) 
         else:
-            questions_data = interface.get_questions_data()
-            if stage_num <= len(questions_data):
+            questions_data = await main_utils.get_course_questions_data(course_slug)
+            print('stage_index', stage_index)
+            print('questions_data', len(questions_data))
+            if stage_index < len(questions_data):
                 await state.update_data(
-                    stage_num=stage_num + 1,
+                    stage_index=stage_index + 1,
                     question_num=1,
                 )
                 text = f"Тема завершена"  
@@ -407,18 +431,28 @@ async def verification(message: types.Message, state: FSMContext):
                     f"\n\nВы набрали ... балов"
                     # f"\n\nВы набрали {main_utils.get_points_count(studying_history)} балов"
                 )
-                completed_course_slugs_list:list = user_data.get('completed_course_slugs_list', [])
+
+                completed_course_slugs_list: list = user_data.get('completed_course_slugs_list', [])
                 completed_course_slugs_list.append(course_slug)
-                await state.update_data(
-                    completed_course_slugs_list=completed_course_slugs_list
-                )
+                user_data['completed_course_slugs_list'] = completed_course_slugs_list
+                await main_utils.save_profile(from_user_id, user_data)
 
                 if len(completed_course_slugs_list) < 2:
-                    reply_markup = main_keyboards.get_question_keyboard(question_data.get('answers'))
-                    text = f"Курс завершен" + text
+                    await state.update_data(
+                        stage_index=1,
+                        question_num=1,
+                    )
+                    reply_markup = main_keyboards.get_menu_keyboard(course_slug , 1, 'kkk')
+                    text = f"Курс завершен"
                 else:
-                    reply_markup = main_keyboards.get_menu_keyboard(user_data.get('departament') , 1, 'kkk')
-                    text = f"Обучение завершено" + text
+                    user_data['training_status'] = "finished"
+                    print('user_data', user_data)
+
+                    text = f"""
+                        Обучение завершено
+                        \n\nВы набрали {main_utils.get_total_balls(user_data)} балов
+                    """
+                    await main_utils.save_profile(from_user_id, user_data)
 
 
             await main_utils.delete_previous_messages(bot, message, state)
