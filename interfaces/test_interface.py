@@ -22,3 +22,11 @@ def get_questions_data():
 
 async def verification_correct_answer(question_data, answer):
     return True
+
+
+async def get_neuro_consultant_answer(user_question: str) -> str:
+    neuro_consultant_answer = 'Ответ не известен.'
+    
+    # Здесь должен быть код, который возвращает ответ консультанта
+
+    return neuro_consultant_answer

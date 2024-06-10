@@ -140,26 +140,17 @@ async def edit_message(
     return message, is_edit
 
 
-async def user_is_allowed(message, user_id=None, state=None):
+async def user_is_allowed(message, user_id, user_data):
     if not user_id:
         user_id = message.from_user.id
 
-    if state:
-        state_data = await state.get_data() 
-        user_data = state_data.get('user_data')
-        registration_status = user_data.get('registration_status')
-        if registration_status:
-            return True
-
-    if str(user_id) not in allowed_users_list:
-        await message.answer("""
-            🚷 Извините, у вас нет доступа к боту 😔.
-            """,
-        )     
+    registration_status = user_data.get('registration_status')
+    if registration_status:
+        return True
+    else:
+        await message.answer("🚷 Извините, у вас нет доступа к боту 😔.")     
         return False  
     
-    return True
-
 
 async def append_value_state_data(state: FSMContext, name: str, values_list: list):
     '''

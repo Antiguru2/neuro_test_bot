@@ -46,6 +46,7 @@ class MainStatesGroup(state.StatesGroup):
     registration = state.State()
     studying = state.State()
     testing = state.State()
+    neuro_consult = state.State()
 
 
 from main import handlers as main_handlers
