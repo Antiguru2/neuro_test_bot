@@ -70,17 +70,15 @@ def get_web_app_keyboard(url: str ='https://basestore.site/', text: str = 'web_a
     return builder.as_markup()
 
 
-def get_menu_keyboard(course_slug, stage_slug, training_status):
+def get_menu_keyboard(course_slug, stage_slug, is_trained):
     '''
         Возвращает первую клавиатуру
     '''
     builder = InlineKeyboardBuilder()
 
-    if training_status != 'finished':
+    if not is_trained:
         url = f"{WEB_APP_PATH}{course_slug}/{stage_slug}/"
-        text = "Продолжить обучение 👩‍🏫"
-        if not training_status:
-            text = "Приступить к обучению 👩‍🏫"
+        text = "Приступить к обучению 👩‍🏫"
 
         builder.row(get_web_app_button(url, text))
 
@@ -180,7 +178,6 @@ def get_registration_keyboard(registration_stage: int) -> Optional[types.InlineK
     '''
     builder = InlineKeyboardBuilder()
     reg_stage_data = REGISTRATION_DATA[registration_stage]
-    # print("reg_stage_data", reg_stage_data)
 
     buttons = reg_stage_data.get('buttons')
     if buttons:

@@ -31,11 +31,22 @@ from bot import (
     MainStatesGroup,
     general_rate_slug,
 )
+from models import (
+    Profile,
+    Question,
+    StudyingHistory,
+    CourseHistory,
+    StageHistory,
+    QuestionHistory,
+)
+from mixins import (
+    TestManager,
+)
 
 # 👋📖📝🛰️🛸👨‍🔬👩‍🏫
 
 main_router = Router(name='main')
-
+test_manager = TestManager()
 
 
 @main_router.message(Command("start"))
@@ -47,70 +58,33 @@ async def start(message: types.Message, state: FSMContext):
     '''
     await state.clear()
 
-    """
-        Нужно попытаться получить файл с id юзера
-        Если он есть по востановить сессию
-        если нет то спросить профиль, пароль, фио
-        после регистрации начать обучение
-    """
-
     from_user_id = message.from_user.id
-    user_data = {}
 
-    # Работа с файлами
-    if not os.path.exists('profiles'):
-        os.mkdir('profiles')
+    profile = Profile.get(from_user_id)
+    await state.update_data(user_data=profile.model_dump())
 
-    file_path = f'profiles/{from_user_id}.json'
-    if os.path.exists(file_path):
-        async with aiofiles.open(file_path, mode='r') as f:
-            user_data = json.loads(await f.read())
-    else:
-        start_of_use = int(datetime.now().timestamp())
-        async with aiofiles.open(file_path, mode='w') as f:
-            user_data = {'start_of_use': start_of_use}
-            await f.write(json.dumps(user_data))
-
-    await state.update_data(user_data=user_data)
-
-    # Проверка регистрации
-    training_status = user_data.get('training_status', False)
-    registration_status = user_data.get('registration_status', False)
-
-    if not registration_status:            
+    if not profile.is_registered:            
         await state.set_state(MainStatesGroup.registration) 
         await registration(message, state)
         return
     
-    # Проверка проверка состояния обучения пользователя
-    await state.set_state(MainStatesGroup.studying)   
-    state_data = await state.get_data()
-    user_data = state_data.get('user_data')
-
+    # Проверка состояния обучения пользователя
     text = "👋 Добро пожаловать в <b>Нейро-тест бота</b>\n\nОн преднозначен для обучения 👩‍🏫 и проверки знаний 📝."
 
-    if  training_status == "finished":
+    if profile.is_trained:
         await state.set_state(MainStatesGroup.neuro_consult)
         text += "\n\nВы уже закончили обучение можете задавать вопросы нейро-консультанту 👨‍🔬"
         reply_markup = None
     else:
+        await state.set_state(MainStatesGroup.studying)   
 
-        completed_course_slugs_list: list = user_data.get('completed_course_slugs_list', [])
-
-        if len(completed_course_slugs_list) == 0:
-            course_slug = general_rate_slug
-
-        if len(completed_course_slugs_list) == 1:
-            course_slug = user_data.get('departament')     
-
-        # print('course_slug', course_slug)   
-        # print('completed_course_slugs_list', completed_course_slugs_list)   
+        course_slug = profile.get_next_course_slug()  
 
         await state.update_data(course_slug=course_slug)
-        stage_index = 1
-        await state.update_data(stage_index=stage_index)
-        stage_slug = main_utils.get_stage_slug(course_slug, stage_index)
-        reply_markup = main_keyboards.get_menu_keyboard(course_slug, stage_slug, training_status)
+        stage_num = 1
+        await state.update_data(stage_num=stage_num)
+        stage_slug = main_utils.get_stage_slug(course_slug, stage_num)
+        reply_markup = main_keyboards.get_menu_keyboard(course_slug, stage_slug, profile.is_trained)
 
         text += "\n\nПосле прохождения обучения вам будет доступен нейро-консультант 👨‍🔬, он поможет вам в вопросах по теме."
 
@@ -123,9 +97,10 @@ async def start(message: types.Message, state: FSMContext):
     await main_utils.append_value_state_data(state, 'previous_messages', [new_message.message_id])
 
     await bot.set_my_commands(
+        # commands=[types.BotCommand(command='/menu', description='Меню')],
         commands=[types.BotCommand(command='/menu', description='Меню')],
-        scope=types.BotCommandScopeAllPrivateChats(),
-        # scope=types.BotCommandScopeDefault(),
+        # scope=types.BotCommandScopeAllPrivateChats(),
+        scope=types.BotCommandScopeChat(chat_id=from_user_id),
     )
     # await main_utils.delete_previous_messages(bot, message, state)
     # await main_utils.try_message_delete(message)      
@@ -140,21 +115,19 @@ async def registration(message: types.Message, state: FSMContext):
     '''
     status = True
     from_user_id = message.chat.id
+
     state_data = await state.get_data()
-    # print("state_data", state_data)
+    profile = Profile.get(from_user_id)
     registration_stage = state_data.get('registration_stage', 0)
     departament = state_data.get('departament')
     
-    if registration_stage + 1 > 3:
-        user_data = state_data.get('user_data')
-        username = message.text
-        
-        user_data['registration_status'] = True
-        user_data['departament'] = departament
-        user_data['username'] = username
+    if registration_stage > 2:
+        profile.username = message.text
+        profile.is_registered = True
+        profile.departament = departament
 
-        await state.update_data(user_data=user_data)
-        await main_utils.save_profile(from_user_id, user_data)
+        await state.update_data(user_data=profile.model_dump())
+        profile.save()
 
         await state.set_state(MainStatesGroup.studying) 
         await start(message, state)
@@ -191,7 +164,6 @@ async def registration(message: types.Message, state: FSMContext):
         await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])
     
 
-
 @main_router.callback_query(
     MainStatesGroup.registration,
 )
@@ -227,74 +199,60 @@ async def menu(message: types.Message, state: FSMContext):
     await main_utils.append_value_state_data(state, 'previous_messages', [new_message.message_id])
 
 
-
 @main_router.message(
     F.web_app_data.data,
 )
 async def web_app(message: types.Message, state: FSMContext):
     web_app_data = message.web_app_data    
-    print("web_app_data.data", web_app_data.data)
     # if web_app_data.data == 'done':
 
     await state.set_state(MainStatesGroup.testing)   
     await testing(message, state)
 
 
-"""
-    Нужно ублать studying
-    Вместо этого, все первые переменные должны выставляться на старте (или меню)
-    Так же нужно изменить то как тестирование работает(частично поменялась структура, а так же появились курсы)
-"""
-
-
 async def testing(message: types.Message, state: FSMContext):
     '''
-        Запускает тестирование
+        Функция которая задает вопросы пользователям
     '''
-    # Проверяем может ли пользователь использовать бота
-    print("testing")
+    # Получаем профиль
     from_user_id = message.chat.id
     state_data = await state.get_data()
-    user_data = state_data.get('user_data')
-    user_is_allowed = await main_utils.user_is_allowed(
-        message, 
-        from_user_id,
-        user_data,
-    )
+    profile = Profile.get(from_user_id)
   
-    if user_is_allowed:
-        await state.set_state(MainStatesGroup.testing)   
-        stage_index = state_data.get('stage_index', 1)
-        question_num = state_data.get('question_num', 1)  
-        # print('stage_index', stage_index)
-        if question_num == 1:
-            await state.update_data(question_num=question_num)   
+    # Переводим пользователя в "тестирование" и 
+    # получаем данные о том какой вопрос нужно задавать
+    await state.set_state(MainStatesGroup.testing)   
+    stage_num = state_data.get('stage_num', 1)
+    question_num = state_data.get('question_num', 1)  
 
+    # Обновляем данные о том какой вопрос нужно задавать
+    if question_num == 1:
+        await state.update_data(question_num=question_num)   
 
-        completed_course_slugs_list: list = user_data.get('completed_course_slugs_list', [])
+    if stage_num == 1:
+        await state.update_data(stage_num=stage_num)   
 
-        if len(completed_course_slugs_list) == 0:
-            course_slug = general_rate_slug
+    course_slug = profile.get_next_course_slug() 
+    await state.update_data(course_slug=course_slug)
 
-        if len(completed_course_slugs_list) == 1:
-            course_slug = user_data.get('departament')   
+    # Получаем вопрос
+    questions_asked = profile.get_questions_asked(course_slug, stage_num)
+    question: Question = test_manager.get_question(course_slug, stage_num - 1 , question_num - 1, questions_asked) 
 
-        await state.update_data(course_slug=course_slug)
+    # Сохраняем данные о том какой вопрос задан
+    await state.update_data(questions_ask_num=question.num)  
 
-        question_data = await main_utils.get_question_data(course_slug, stage_index - 1 , question_num - 1) 
-
-        await main_utils.delete_previous_messages(bot, message, state)
-
-        message_data = {
-            'text': question_data.get('question_text'),    
-            'chat_id': from_user_id,
-            'parse_mode': 'html',
-            'reply_markup': main_keyboards.get_question_keyboard(question_data.get('answers')),
-        }  
-        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
-
-        if is_sent:
-            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+    # Удаляем все лишнее, формируем данные для сообщения и отправляем его
+    await main_utils.delete_previous_messages(bot, message, state)
+    message_data = {
+        'text': question.text,    
+        'chat_id': from_user_id,
+        'parse_mode': 'html',
+        'reply_markup': main_keyboards.get_question_keyboard(question.answers),
+    }  
+    message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+    if is_sent:
+        await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
 
 
 @main_router.callback_query(
@@ -302,11 +260,8 @@ async def testing(message: types.Message, state: FSMContext):
 )
 async def testing_router(callback: types.CallbackQuery, state: FSMContext):
     '''
-        Запускает тестирование
+        Запускает тестирование по кнопке
     '''
-    await state.update_data(
-        last_callback_id=callback.id
-    )    
     await testing(callback.message, state)
 
 
@@ -314,65 +269,61 @@ async def testing_router(callback: types.CallbackQuery, state: FSMContext):
     MainStatesGroup.testing,
     F.data.split('__')[0] == 'answer',
 )
-async def verification(callback: types.CallbackQuery, state: FSMContext):
+async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     '''
-        Проверяет тестирование
+        Проверяет ответ на тестовый вопрос
     '''
-    # Проверяем может ли пользователь использовать бота
-    print('verification')
-    state_data = await state.update_data(
-        last_callback_id=callback.id
-    )
-    user_data: dict = state_data.get("user_data")
+    # Получаем профиль 
     from_user_id = callback.message.chat.id
-    user_is_allowed = await main_utils.user_is_allowed(
-        callback.message, 
-        from_user_id,
-        user_data,
+    profile = Profile.get(from_user_id)
+
+    # Получаем индекс ответа
+    answer_index = int(callback.data.split('__')[1])
+
+    # Получаем данные о том какой вопрос нужно проверять
+    state_data = await state.get_data()
+    course_slug = state_data.get('course_slug')
+    stage_num = state_data.get('stage_num')
+    question_num = state_data.get('question_num')     
+    questions_ask_num = state_data.get('questions_ask_num')     
+    print('question_num', question_num)
+    print('questions_ask_num', questions_ask_num)
+
+
+    # Получаем вопрос
+    question: Question = test_manager.get_question(
+        course_slug, 
+        stage_num - 1, 
+        question_num - 1, 
+        questions_ask_index=questions_ask_num - 1
+    ) 
+    print('question', question)
+    stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
+    # print('question_type', question_type)
+
+    question_history = QuestionHistory(
+        num=questions_ask_num, 
+        type='test_questions',
+        is_correct=question.get_is_correct_status(answer_index),
+        question=question.text,
+        answer=question.answers[answer_index],
     )
-  
-    if user_is_allowed:
-        answer_index = int(callback.data.split('__')[1])
 
-        course_slug = state_data.get('course_slug')
-        stage_index = state_data.get('stage_index')
-        question_num = state_data.get('question_num')     
+    profile.update_question_history(
+        course_slug, 
+        stage_num, 
+        question_num,
+        question_history,
+    )
 
 
-        question_data = await main_utils.get_question_data(course_slug, stage_index - 1, question_num - 1) 
+    await state.update_data(user_data=profile.model_dump())
 
-        is_correct_answer = False
-        answer = question_data.get('answers')[answer_index]
-        if question_data.get('correct_answer') == answer:
-            is_correct_answer = True
-
-        studying_history: dict = user_data.get('studying_history', {})
-        course_history: list = studying_history.get(course_slug, [])
-
-        stage_history = []
-        if studying_history:
-            try:
-                stage_history: list = course_history.pop(stage_index - 1)
-            except IndexError:
-                pass
-        
-        stage_history.append({'is_correct_answer': is_correct_answer})
-        course_history.insert(stage_index - 1, stage_history)
-
-        studying_history[course_slug] = course_history
-        # print('studying_history', studying_history)
-
-        user_data['studying_history'] = studying_history
-        await state.update_data(user_data=user_data)
-        await main_utils.save_profile(from_user_id, user_data)
-
-        stage_questions_data = await main_utils.get_stage_questions_data(course_slug, stage_index - 1) 
-
-        if question_num < len(stage_questions_data):
-            state_data = await state.update_data(
-                question_num=question_num + 1
-            )
-            await testing(callback.message, state)
+    if question_num <= questions_count:
+        state_data = await state.update_data(
+            question_num=question_num + 1
+        )
+        await testing(callback.message, state)
 
 
 @main_router.message(
@@ -382,105 +333,97 @@ async def verification(message: types.Message, state: FSMContext):
     '''
         Проверяет тестирование
     '''
-    # Проверяем может ли пользователь использовать бота
-    # print('verification')
     from_user_id = message.chat.id
     state_data = await state.get_data()
-    user_data: dict = state_data.get("user_data")
-    user_is_allowed = await main_utils.user_is_allowed(
-        message, 
-        from_user_id,
-        user_data,
-    )
+    profile: Profile = Profile.get(from_user_id)
+
     await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
     reply_markup = None
   
-    if user_is_allowed:
-        answer = message.text
-        stage_index = state_data.get('stage_index')
-        question_num = state_data.get('question_num')     
-        course_slug = state_data.get('course_slug')     
+    answer = message.text
 
-        question_data = await main_utils.get_question_data(course_slug, stage_index - 1, question_num - 1) 
+    course_slug = state_data.get('course_slug')
+    stage_num = state_data.get('stage_num')
+    question_num = state_data.get('question_num') 
+    questions_ask_num = state_data.get('questions_ask_num')  
 
-        is_correct_answer = await interface.verification_correct_answer(question_data, answer)
+    questions_asked = profile.get_questions_asked(course_slug, stage_num)
+    question: Question = test_manager.get_question(course_slug, stage_num - 1 , question_num - 1, questions_asked) 
+    stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
 
-        studying_history: dict = user_data.get('studying_history', {})
-        course_history: list = studying_history.get(course_slug, [])
+    question_history = QuestionHistory(
+        num=questions_ask_num, 
+        type='open_questions',
+        is_correct=question.get_is_correct_status(answer=answer),
+        question=question.text,
+        answer=answer,
+    )
 
-        stage_history = []
-        if course_history:
-            stage_history: list = course_history.pop(stage_index - 1)
-        
-        stage_history.append({'is_correct_answer': is_correct_answer})
-        course_history.insert(stage_index - 1, stage_history)
-        studying_history[course_slug] = course_history
-        # print('studying_history', studying_history)
+    profile.update_question_history(
+        course_slug, 
+        stage_num, 
+        question_num,
+        question_history,
+    )
 
-        user_data['studying_history'] = studying_history
-        await state.update_data(user_data=user_data)
-        await main_utils.save_profile(from_user_id, user_data)
-        stage_questions_data = await main_utils.get_stage_questions_data(course_slug, stage_index - 1) 
+    await state.update_data(user_data=profile.model_dump())
 
-        if question_num < len(stage_questions_data):
+    if question_num < questions_count:
+        state_data = await state.update_data(
+            question_num=question_num + 1
+        )
+        await testing(message, state)
+    else:
+        questions_data = test_manager.get_course_data(course_slug)
+        if stage_num < len(questions_data):
             await state.update_data(
-                question_num=question_num + 1
+                stage_num=stage_num + 1,
+                question_num=1,
             )
-            await testing(message, state) 
+            text = f"Тема завершена"  
+            reply_markup = main_keyboards.get_menu_keyboard(course_slug , 1, 'kkk')
+
         else:
-            questions_data = await main_utils.get_course_questions_data(course_slug)
-            print('stage_index', stage_index)
-            print('questions_data', len(questions_data))
-            if stage_index < len(questions_data):
+            text = str(
+                f"\n\nВы набрали ... балов"
+            )
+
+            completed_course_slugs_list: list = profile.completed_courses_slugs_list
+            completed_course_slugs_list.append(course_slug)
+            profile.completed_courses_slugs_list = completed_course_slugs_list
+
+            if len(completed_course_slugs_list) < 2:
                 await state.update_data(
-                    stage_index=stage_index + 1,
+                    stage_num=1,
                     question_num=1,
                 )
-                text = f"Тема завершена"  
-                reply_markup = main_keyboards.get_menu_keyboard(course_slug , 1, 'kkk')
-
+                stage_data = test_manager.get_stage_data(course_slug, stage_num - 1)
+                reply_markup = main_keyboards.get_menu_keyboard(course_slug , stage_data.get('slug'), False)
+                text = f"Курс завершен"
             else:
-                text = str(
-                    f"\n\nВы набрали ... балов"
-                    # f"\n\nВы набрали {main_utils.get_points_count(studying_history)} балов"
-                )
+                profile.is_trained = True
+                await state.set_state(MainStatesGroup.neuro_consult)
 
-                completed_course_slugs_list: list = user_data.get('completed_course_slugs_list', [])
-                completed_course_slugs_list.append(course_slug)
-                user_data['completed_course_slugs_list'] = completed_course_slugs_list
-                await main_utils.save_profile(from_user_id, user_data)
+                text = f"""
+                    Обучение завершено
+                    \n\nВы набрали {test_manager.get_total_balls(profile.studying_history)} балов
+                    \n\nВы можете задать вопрос нейроконсультанту
+                """
 
-                if len(completed_course_slugs_list) < 2:
-                    await state.update_data(
-                        stage_index=1,
-                        question_num=1,
-                    )
-                    reply_markup = main_keyboards.get_menu_keyboard(course_slug , 1, 'kkk')
-                    text = f"Курс завершен"
-                else:
-                    user_data['training_status'] = "finished"
-                    await state.set_state(MainStatesGroup.neuro_consult)
-                    print('user_data', user_data)
-
-                    text = f"""
-                        Обучение завершено
-                        \n\nВы набрали {main_utils.get_total_balls(user_data)} балов
-                        \n\nВы можете задать вопрос нейроконсультанту
-                    """
-                    await main_utils.save_profile(from_user_id, user_data)
+            profile.save()
 
 
-            await main_utils.delete_previous_messages(bot, message, state)
-            message_data = {
-                'text': text,    
-                'chat_id': from_user_id,
-                'parse_mode': 'html',
-                'reply_markup': reply_markup,
-            }  
-            message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+        await main_utils.delete_previous_messages(bot, message, state)
+        message_data = {
+            'text': text,    
+            'chat_id': from_user_id,
+            'parse_mode': 'html',
+            'reply_markup': reply_markup,
+        }  
+        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
 
-            if is_sent:
-                await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])                 
+        if is_sent:
+            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])                 
 
 
 @main_router.message(

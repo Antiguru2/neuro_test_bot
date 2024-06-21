@@ -99,8 +99,6 @@ async def send_message(
         message_data.pop('message_id')
 
     if message_data:
-        # print('message_data')
-        # pprint(message_data)
         message = await bot.send_message(**message_data)
     if message:
         is_send = True
@@ -138,19 +136,7 @@ async def edit_message(
         is_edit = True
 
     return message, is_edit
-
-
-async def user_is_allowed(message, user_id, user_data):
-    if not user_id:
-        user_id = message.from_user.id
-
-    registration_status = user_data.get('registration_status')
-    if registration_status:
-        return True
-    else:
-        await message.answer("🚷 Извините, у вас нет доступа к боту 😔.")     
-        return False  
-    
+  
 
 async def append_value_state_data(state: FSMContext, name: str, values_list: list):
     '''
@@ -173,10 +159,10 @@ def get_stage_line_numbers_list() -> list:
     return stage_line_numbers
 
 
-def get_stage_content_by_number(stage_index: int) -> str:
+def get_stage_content_by_number(stage_num: int) -> str:
     content = interface.get_knowledge_base()
 
-    pattern = rf'# {stage_index} этап обучения\n(.*?)(?=\n# |\Z)'
+    pattern = rf'# {stage_num} этап обучения\n(.*?)(?=\n# |\Z)'
     stage_match = re.search(pattern, content, re.DOTALL)
 
     if stage_match:
@@ -185,79 +171,28 @@ def get_stage_content_by_number(stage_index: int) -> str:
         return "Этап обучения не найден"
     
 
-async def get_last_stage_index_and_last_question_index(state: FSMContext) -> tuple:
+async def get_last_stage_num_and_last_question_index(state: FSMContext) -> tuple:
     state_data = await state.get_data()
     user_data = state_data.get('user_data')
-    last_stage_index = None
+    last_stage_num = None
     last_question_index = None
     if user_data:
         studying_history = user_data.get('studying_history')
         if studying_history:
-            last_stage_index = len(studying_history) - 1
-            last_stage = studying_history[last_stage_index]
+            last_stage_num = len(studying_history) - 1
+            last_stage = studying_history[last_stage_num]
             if last_stage:
                 last_question_index = len(last_stage) - 1
  
-    return last_stage_index, last_question_index
- 
-
-async def get_course_questions_data(courses_slugs) -> list:
-    courses_questions_data = []
-    questions_data = interface.get_questions_data()
-    if questions_data:
-        courses_questions_data = questions_data.get(courses_slugs)    
-    return courses_questions_data
+    return last_stage_num, last_question_index
 
 
-async def get_stage_questions_data(courses_slugs, stage_index) -> list:
-    stage_questions_data = []
-
-    courses_questions_data = await get_course_questions_data(courses_slugs)
-    if courses_questions_data:
-        stage_questions_data = courses_questions_data[stage_index].get('questions')
-    
-    return stage_questions_data
-
-
-async def get_question_data(courses_slugs, stage_index, question_num) -> dict:
-    question_data = {}
-    stage_questions_data = await get_stage_questions_data(courses_slugs, stage_index)
-    if stage_questions_data:
-        question_data = stage_questions_data[question_num]
-    
-    return question_data
-
-def get_points_count(studying_history):
-    points_count = 0
-    for stage_history in studying_history:
-        for answer in stage_history:
-            is_correct_answer = answer.get('is_correct_answer')
-            if is_correct_answer:
-                points_count += 1
-    return points_count
-
-
-async def save_profile(user_id, user_data):
-    file_path = f'profiles/{user_id}.json'
-    async with aiofiles.open(file_path, mode='w') as f:
-        await f.write(json.dumps(user_data))
-
-
-def get_stage_slug(course_slug, stage_index):
+def get_stage_slug(course_slug, stage_num):
     questions_data = interface.get_questions_data()
     courses_data = questions_data[course_slug]
-    stage_data = courses_data[stage_index - 1]
+    stage_data = courses_data[stage_num - 1]
     course_slug = stage_data.get('slug')
     return course_slug
-
-
-def get_completed_course_slugs_list(user_data: dict) -> list:
-    completed_course_slugs = []
-    studying_history = user_data.get('studying_history', {})
-    for course_slug in studying_history.keys():
-        completed_course_slugs.append(course_slug)
-
-    return completed_course_slugs
 
 
 def get_total_balls(user_data: dict) -> int:
