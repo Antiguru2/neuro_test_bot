@@ -57,6 +57,7 @@ async def start(message: types.Message, state: FSMContext):
         Если пользователь не зарегистрирован то переводит на регистрацию
         Иначе основное меню
     '''
+    await main_utils.delete_previous_messages(bot, message, state)
     await state.clear()
 
     from_user_id = message.from_user.id
@@ -274,6 +275,7 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     '''
         Проверяет ответ на тестовый вопрос
     '''
+    # print('________________test_questions')
     # Получаем профиль 
     from_user_id = callback.message.chat.id
     profile = Profile.get(from_user_id)
@@ -289,6 +291,8 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     stage_num = state_data.get('stage_num')
     question_num = state_data.get('question_num')     
     questions_ask_num = state_data.get('questions_ask_num')     
+    # print('question_num', question_num)
+    # print('questions_ask_num', questions_ask_num)
 
     # Получаем вопрос
     question: Question = test_manager.get_question(
@@ -361,6 +365,7 @@ async def verification(message: types.Message, state: FSMContext):
     '''
         Проверяет тестирование
     '''
+    # print('_____________________open_questions')
     from_user_id = message.chat.id
     state_data = await state.get_data()
     profile: Profile = Profile.get(from_user_id)
@@ -374,9 +379,17 @@ async def verification(message: types.Message, state: FSMContext):
     stage_num = state_data.get('stage_num')
     question_num = state_data.get('question_num') 
     questions_ask_num = state_data.get('questions_ask_num')  
+    # print('question_num', question_num)
+    # print('questions_ask_num', questions_ask_num)
 
-    questions_asked = profile.get_questions_asked(course_slug, stage_num)
-    question: Question = test_manager.get_question(course_slug, stage_num - 1 , question_num - 1, questions_asked) 
+    # Получаем вопрос
+    question: Question = test_manager.get_question(
+        course_slug, 
+        stage_num - 1, 
+        question_num - 1, 
+        questions_ask_index=questions_ask_num - 1
+    ) 
+
     stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
     is_correct, comment = question.get_is_correct_status(answer=answer)
 

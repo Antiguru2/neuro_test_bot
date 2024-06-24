@@ -48,12 +48,11 @@ class TestManager:
                 questions_count = total_questions_count
                 stage_questions_data = stage_data.get(question_type)
 
-
-
         return stage_questions_data, questions_count, question_type
 
 
     def get_question_data(self, courses_slugs, stage_index, question_index, questions_asked = {}, questions_ask_index = None) -> dict:
+        # print('++++++++++++++get_question_data')
         question_data = {}
         stage_questions_data, questions_count, question_type = self.get_stage_questions_data(courses_slugs, stage_index, question_index)
 
@@ -66,6 +65,7 @@ class TestManager:
                 next_questions_nums = [x for x in questions_nums_list if x not in questions_asked_list]
 
                 if next_questions_nums:
+                    # print('ЁЁЁ   next_questions_nums', next_questions_nums)
                     random_questions_num = random.choice(next_questions_nums)
                     question_index = random_questions_num - 1
                 else:
@@ -74,6 +74,7 @@ class TestManager:
                     else:
                         question_index = question_index
 
+            # print('question_index', question_index)
             question_data = stage_questions_data[question_index]
             question_data['num'] = question_index + 1
         return question_data
