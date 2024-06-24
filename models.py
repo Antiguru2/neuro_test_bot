@@ -211,7 +211,9 @@ class Question(BaseModel):
         self, 
         answer_index: Optional[int] = None,
         answer: Optional[str] = None,
-    ) -> bool:
+    ) -> tuple[bool, Optional[str]]:
+        # print('get_is_correct_status')
+        # print('self.num', self.num)
         comment = None
         is_correct = False
         if answer_index != None and self.correct_answer and self.answers:
