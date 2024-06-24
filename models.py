@@ -219,7 +219,7 @@ class Question(BaseModel):
                 is_correct = True
 
         elif self.context and answer:
-            is_correct = interface.verification_correct_answer(self, answer)
+            is_correct = interface.verification_correct_answer(self, answer, self.context)
 
         else:
             raise ValueError(f"""

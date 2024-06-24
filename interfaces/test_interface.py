@@ -20,7 +20,7 @@ def get_questions_data():
 
     return questions_data  
 
-def verification_correct_answer(question, answer) -> bool:
+def verification_correct_answer(question, answer, context) -> bool:
     return True
 
 
