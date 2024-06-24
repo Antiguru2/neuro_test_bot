@@ -212,6 +212,7 @@ class Question(BaseModel):
         answer_index: Optional[int] = None,
         answer: Optional[str] = None,
     ) -> bool:
+        comment = None
         is_correct = False
         if answer_index != None and self.correct_answer and self.answers:
             answer = self.answers[answer_index]
@@ -219,7 +220,7 @@ class Question(BaseModel):
                 is_correct = True
 
         elif self.context and answer:
-            is_correct = interface.verification_correct_answer(self, answer, self.context)
+            is_correct, comment = interface.verification_correct_answer(self, answer, self.context)
 
         else:
             raise ValueError(f"""
@@ -232,4 +233,4 @@ class Question(BaseModel):
                     self.answers: {self.answers}
             """)
         
-        return is_correct
+        return is_correct, comment

@@ -27,7 +27,7 @@ def get_questions_data():
 
     return questions_data  
 
-def verification_correct_answer(question, answer, context) -> bool:
+def verification_correct_answer(question, answer, context) -> tuple[bool, str]:
     return verify_answers(context, question, answer)
 
 
@@ -96,11 +96,9 @@ def verify_answers(fragment, question, answer):
     )
     ans = response.choices[0].message.content
     # Разделяем ответ на части и удаляем пустые элементы
-    print("ans", ans)
-    response_parts = ans.split("##_ ")[
-        1:
-    ]  
+    response_parts = ans.split("##_")[1:]  
+    comment = ans.split("##_")[-1]  
     if 'сдал' in response_parts:
-        return True
+        return True, comment
     else:
-        return False
+        return False, comment

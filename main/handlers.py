@@ -299,7 +299,7 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     ) 
 
     stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
-    is_correct = question.get_is_correct_status(answer_index)
+    is_correct, comment = question.get_is_correct_status(answer_index)
 
     # Если ответ не правильный то скидываем на начало курса
     if not is_correct:
@@ -309,8 +309,13 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
             stage_num=1,
             question_num=1,
         )
+
+        text = '❌ Вы ответили неправильно. Попробуйте еще раз'
+        if comment:
+            text += f'\n\nℹ️{comment}'
+            
         message_data = {
-            'text': '❌ Вы ответили неправильно. Попробуйте еще раз',    
+            'text': text,
             'chat_id': from_user_id,
             'parse_mode': 'html',
             'reply_markup': main_keyboards.get_menu_keyboard(
@@ -327,7 +332,7 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     question_history = QuestionHistory(
         num=questions_ask_num, 
         type='test_questions',
-        is_correct=question.get_is_correct_status(answer_index),
+        is_correct=is_correct,
         question=question.text,
         answer=question.answers[answer_index],
     )
@@ -373,7 +378,7 @@ async def verification(message: types.Message, state: FSMContext):
     questions_asked = profile.get_questions_asked(course_slug, stage_num)
     question: Question = test_manager.get_question(course_slug, stage_num - 1 , question_num - 1, questions_asked) 
     stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
-    is_correct = question.get_is_correct_status(answer=answer)
+    is_correct, comment = question.get_is_correct_status(answer=answer)
 
     # Если ответ не правильный то скидываем на начало курса
     if not is_correct:
@@ -383,8 +388,13 @@ async def verification(message: types.Message, state: FSMContext):
             stage_num=1,
             question_num=1,
         )
+
+        text = '❌ Вы ответили неправильно. Попробуйте еще раз'
+        if comment:
+            text += f'\n\nℹ️{comment}'
+
         message_data = {
-            'text': '❌ Вы ответили неправильно. Попробуйте еще раз',    
+            'text': text,
             'chat_id': from_user_id,
             'parse_mode': 'html',
             'reply_markup': main_keyboards.get_menu_keyboard(
