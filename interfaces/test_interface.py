@@ -57,6 +57,7 @@ def load_document_text(url: str) -> str:
 
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_API_BASE_URL"),
 )
 
 # verification_system = load_document_text('https://docs.google.com/document/d/1_h8FhotM7A_FwhcHBoXxLE8cYXZzE25dE8WVq_ODqfM')
