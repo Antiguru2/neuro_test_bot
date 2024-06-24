@@ -57,6 +57,7 @@ def load_document_text(url: str) -> str:
 
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_API_BASE_URL"),
 )
 
 # verification_system = load_document_text('https://docs.google.com/document/d/1_h8FhotM7A_FwhcHBoXxLE8cYXZzE25dE8WVq_ODqfM')
@@ -78,7 +79,7 @@ def verify_answers(fragment, question, answer):
         к классу NP-полных задач. Если ответ на этот вопрос положительный, это указывает на то, что для нахождения точного решения задачи, особенно
         когда речь идет о большом объеме исходных данных, потребуются значительные временные ресурсы.' """
 
-    assist = """##_ сдал ##_ Пояснение: ответ студента полностью соответствует заданному вопросу, он точно отражает ключевые аспекты текста и хорошо структурирован"""
+    assist = """##_сдал##_ Пояснение: ответ студента полностью соответствует заданному вопросу, он точно отражает ключевые аспекты текста и хорошо структурирован"""
 
     response = client.chat.completions.create(
         model="gpt-3.5-turbo-1106",  # model="gpt-4-0613",
