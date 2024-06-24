@@ -28,7 +28,7 @@ def get_questions_data():
     return questions_data  
 
 def verification_correct_answer(question, answer, context) -> bool:
-    return True
+    return verify_answers(context, question, answer)
 
 
 async def get_neuro_consultant_answer(user_question: str) -> str:
@@ -78,7 +78,7 @@ def verify_answers(fragment, question, answer):
         к классу NP-полных задач. Если ответ на этот вопрос положительный, это указывает на то, что для нахождения точного решения задачи, особенно
         когда речь идет о большом объеме исходных данных, потребуются значительные временные ресурсы.' """
 
-    assist = """##_ сдал ##_ Пояснение: ответ студента полностью соответствует заданному вопросу, он точно отражает ключевые аспекты текста и хорошо структурирован"""
+    assist = """##_сдал##_ Пояснение: ответ студента полностью соответствует заданному вопросу, он точно отражает ключевые аспекты текста и хорошо структурирован"""
 
     response = client.chat.completions.create(
         model="gpt-3.5-turbo-1106",  # model="gpt-4-0613",
@@ -94,7 +94,7 @@ def verify_answers(fragment, question, answer):
         ],
     )
     ans = response.choices[0].message.content
-    response_parts = ans.split("##_ ")[
+    response_parts = ans.split("##_")[
         1:
     ]  # Разделяем ответ на части и удаляем пустые элементы
     if 'сдал' in response_parts:
