@@ -28,7 +28,7 @@ def get_questions_data():
     return questions_data  
 
 def verification_correct_answer(question, answer, context) -> bool:
-    return True
+    return verify_answers(context, question, answer)
 
 
 async def get_neuro_consultant_answer(user_question: str) -> str:
@@ -94,9 +94,11 @@ def verify_answers(fragment, question, answer):
         ],
     )
     ans = response.choices[0].message.content
+    # Разделяем ответ на части и удаляем пустые элементы
+    print("ans", ans)
     response_parts = ans.split("##_ ")[
         1:
-    ]  # Разделяем ответ на части и удаляем пустые элементы
+    ]  
     if 'сдал' in response_parts:
         return True
     else:
