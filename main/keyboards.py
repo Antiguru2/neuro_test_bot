@@ -78,7 +78,7 @@ def get_menu_keyboard(course_slug, stage_slug, is_trained):
 
     if not is_trained:
         url = f"{WEB_APP_PATH}{course_slug}/{stage_slug}/"
-        text = "Приступить к обучению 👩‍🏫"
+        text = "Изучить материал 👩‍🏫"
 
         builder.row(get_web_app_button(url, text))
 

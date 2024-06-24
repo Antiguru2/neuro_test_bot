@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 import aiofiles
 
 from datetime import (
@@ -277,6 +278,8 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     from_user_id = callback.message.chat.id
     profile = Profile.get(from_user_id)
 
+    await main_utils.delete_previous_messages(bot, callback.message, state)
+
     # Получаем индекс ответа
     answer_index = int(callback.data.split('__')[1])
 
@@ -286,9 +289,6 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     stage_num = state_data.get('stage_num')
     question_num = state_data.get('question_num')     
     questions_ask_num = state_data.get('questions_ask_num')     
-    print('question_num', question_num)
-    print('questions_ask_num', questions_ask_num)
-
 
     # Получаем вопрос
     question: Question = test_manager.get_question(
@@ -297,10 +297,33 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
         question_num - 1, 
         questions_ask_index=questions_ask_num - 1
     ) 
-    print('question', question)
-    stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
-    # print('question_type', question_type)
 
+    stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
+    is_correct = question.get_is_correct_status(answer_index)
+
+    # Если ответ не правильный то скидываем на начало курса
+    if not is_correct:
+        profile.drop_question_history(course_slug)
+        await state.update_data(
+            user_data=profile.model_dump(),
+            stage_num=1,
+            question_num=1,
+        )
+        message_data = {
+            'text': '❌ Вы ответили неправильно. Попробуйте еще раз',    
+            'chat_id': from_user_id,
+            'parse_mode': 'html',
+            'reply_markup': main_keyboards.get_menu_keyboard(
+                course_slug=course_slug,
+                stage_slug=main_utils.get_stage_slug(course_slug, 1),
+                is_trained=profile.is_trained,
+            ),
+        }  
+        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+        if is_sent:
+            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])    
+        return
+    
     question_history = QuestionHistory(
         num=questions_ask_num, 
         type='test_questions',
@@ -350,11 +373,36 @@ async def verification(message: types.Message, state: FSMContext):
     questions_asked = profile.get_questions_asked(course_slug, stage_num)
     question: Question = test_manager.get_question(course_slug, stage_num - 1 , question_num - 1, questions_asked) 
     stage_questions_data, questions_count, question_type = test_manager.get_stage_questions_data(course_slug, stage_num - 1, question_num) 
+    is_correct = question.get_is_correct_status(answer=answer)
+
+    # Если ответ не правильный то скидываем на начало курса
+    if not is_correct:
+        profile.drop_question_history(course_slug)
+        await state.update_data(
+            user_data=profile.model_dump(),
+            stage_num=1,
+            question_num=1,
+        )
+        message_data = {
+            'text': '❌ Вы ответили неправильно. Попробуйте еще раз',    
+            'chat_id': from_user_id,
+            'parse_mode': 'html',
+            'reply_markup': main_keyboards.get_menu_keyboard(
+                course_slug=course_slug,
+                stage_slug=main_utils.get_stage_slug(course_slug, 1),
+                is_trained=profile.is_trained,
+            ),
+        }  
+        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+        if is_sent:
+            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])    
+        return
+
 
     question_history = QuestionHistory(
         num=questions_ask_num, 
         type='open_questions',
-        is_correct=question.get_is_correct_status(answer=answer),
+        is_correct=is_correct,
         question=question.text,
         answer=answer,
     )

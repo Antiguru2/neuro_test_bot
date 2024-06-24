@@ -56,8 +56,6 @@ class TestManager:
     def get_question_data(self, courses_slugs, stage_index, question_index, questions_asked = {}, questions_ask_index = None) -> dict:
         question_data = {}
         stage_questions_data, questions_count, question_type = self.get_stage_questions_data(courses_slugs, stage_index, question_index)
-        print('questions_ask_index', questions_ask_index)
-        print('questions_asked', questions_asked)
 
         if stage_questions_data:
             if questions_ask_index:
@@ -75,7 +73,7 @@ class TestManager:
                         question_index = questions_count - question_index - 1
                     else:
                         question_index = question_index
-            print('question_index', question_index)
+
             question_data = stage_questions_data[question_index]
             question_data['num'] = question_index + 1
         return question_data

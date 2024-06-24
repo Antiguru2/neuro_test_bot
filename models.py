@@ -70,7 +70,7 @@ class Profile(BaseModel):
         stage_num: int, 
         question_num: int,
         history_object: Any,
-    ):
+    ) -> None:
         if course_slug and stage_num and question_num and history_object:
             course_history: list = self.studying_history.get(course_slug, [])
             if stage_num <= len(course_history):
@@ -87,6 +87,14 @@ class Profile(BaseModel):
             self.studying_history[course_slug] = course_history
 
         self.save()
+
+    def drop_question_history(
+        self,
+        course_slug: str, 
+    ) -> None:
+        self.studying_history[course_slug] = []
+        self.save()
+        
 
     @property
     def file_path(self) -> str:
