@@ -12,28 +12,28 @@ from models import (
 
 class TestManager:
 
-    def get_course_data(self, courses_slugs) -> list:
+    def get_course_data(self, course_slug) -> list:
         courses_questions_data = []
         questions_data = interface.get_questions_data()
         if questions_data:
-            courses_questions_data = questions_data.get(courses_slugs)    
+            courses_questions_data = questions_data.get(course_slug)    
         return courses_questions_data
 
 
-    def get_stage_data(self, courses_slugs, stage_num) -> tuple:
+    def get_stage_data(self, course_slug, stage_index) -> tuple:
         stage_data = {}
-        courses_questions_data = self.get_course_data(courses_slugs)
+        courses_questions_data = self.get_course_data(course_slug)
         if courses_questions_data:
-            stage_data: dict = courses_questions_data[stage_num]
+            stage_data: dict = courses_questions_data[stage_index]
 
         return stage_data
     
 
-    def get_stage_questions_data(self, courses_slugs, stage_index, question_index) -> tuple:
+    def get_stage_questions_data(self, course_slug, stage_index, question_index) -> tuple:
         stage_questions_data = []
         questions_count = 0
 
-        stage_data = self.get_stage_data(courses_slugs, stage_index)
+        stage_data = self.get_stage_data(course_slug, stage_index)
         if stage_data:
             test_question_amount: int = stage_data.get('test_question_amount', 0)
             open_question_amount: int = stage_data.get('open_question_amount', 0)
@@ -51,13 +51,20 @@ class TestManager:
         return stage_questions_data, questions_count, question_type
 
 
-    def get_question_data(self, courses_slugs, stage_index, question_index, questions_asked = {}, questions_ask_index = None) -> dict:
+    def get_question_data(
+            self, 
+            course_slug, 
+            stage_index, 
+            question_index, 
+            questions_asked = {}, 
+            questions_ask_index = None
+        ) -> dict:
         # print('++++++++++++++get_question_data')
         question_data = {}
-        stage_questions_data, questions_count, question_type = self.get_stage_questions_data(courses_slugs, stage_index, question_index)
+        stage_questions_data, questions_count, question_type = self.get_stage_questions_data(course_slug, stage_index, question_index)
 
         if stage_questions_data:
-            if questions_ask_index:
+            if questions_ask_index != None:                
                 question_index = questions_ask_index
             else:
                 questions_asked_list = questions_asked.get(question_type, [])
@@ -74,7 +81,6 @@ class TestManager:
                     else:
                         question_index = question_index
 
-            # print('question_index', question_index)
             question_data = stage_questions_data[question_index]
             question_data['num'] = question_index + 1
         return question_data

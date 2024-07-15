@@ -61,7 +61,6 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
 
     from_user_id = message.from_user.id
-
     profile = Profile.get(from_user_id)
     await state.update_data(user_data=profile.model_dump())
 
@@ -83,9 +82,8 @@ async def start(message: types.Message, state: FSMContext):
         course_slug = profile.get_next_course_slug()  
 
         await state.update_data(course_slug=course_slug)
-        stage_num = 1
-        await state.update_data(stage_num=stage_num)
-        stage_slug = main_utils.get_stage_slug(course_slug, stage_num)
+        await state.update_data(stage_num=1)
+        stage_slug = main_utils.get_stage_slug(course_slug, 1)
         reply_markup = main_keyboards.get_menu_keyboard(course_slug, stage_slug, profile.is_trained)
 
         text += "\n\nПосле прохождения обучения вам будет доступен нейро-консультант 👨‍🔬, он поможет вам в вопросах по теме."
@@ -216,6 +214,7 @@ async def testing(message: types.Message, state: FSMContext):
     '''
         Функция которая задает вопросы пользователям
     '''
+    # print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx testing')
     # Получаем профиль
     from_user_id = message.chat.id
     state_data = await state.get_data()
@@ -239,7 +238,12 @@ async def testing(message: types.Message, state: FSMContext):
 
     # Получаем вопрос
     questions_asked = profile.get_questions_asked(course_slug, stage_num)
-    question: Question = test_manager.get_question(course_slug, stage_num - 1 , question_num - 1, questions_asked) 
+    question: Question = test_manager.get_question(
+        course_slug, 
+        stage_num - 1 , 
+        question_num - 1, 
+        questions_asked
+    ) 
 
     # Сохраняем данные о том какой вопрос задан
     await state.update_data(questions_ask_num=question.num)  
@@ -271,11 +275,11 @@ async def testing_router(callback: types.CallbackQuery, state: FSMContext):
     MainStatesGroup.testing,
     F.data.split('__')[0] == 'answer',
 )
-async def verification_router(callback: types.CallbackQuery, state: FSMContext):
+async def test_questions_verification(callback: types.CallbackQuery, state: FSMContext):
     '''
-        Проверяет ответ на тестовый вопрос
+        Проверяет ответ на тестовые вопросы
     '''
-    # print('________________test_questions')
+    # print('________________test_questions_verification')
     # Получаем профиль 
     from_user_id = callback.message.chat.id
     profile = Profile.get(from_user_id)
@@ -291,8 +295,6 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
     stage_num = state_data.get('stage_num')
     question_num = state_data.get('question_num')     
     questions_ask_num = state_data.get('questions_ask_num')     
-    # print('question_num', question_num)
-    # print('questions_ask_num', questions_ask_num)
 
     # Получаем вопрос
     question: Question = test_manager.get_question(
@@ -361,11 +363,11 @@ async def verification_router(callback: types.CallbackQuery, state: FSMContext):
 @main_router.message(
     MainStatesGroup.testing,
 )
-async def verification(message: types.Message, state: FSMContext):
+async def open_questions_verification(message: types.Message, state: FSMContext):
     '''
-        Проверяет тестирование
+        Проверяет открытые вопросы
     '''
-    # print('_____________________open_questions')
+    # print('_____________________open_questions_verification')
     from_user_id = message.chat.id
     state_data = await state.get_data()
     profile: Profile = Profile.get(from_user_id)
@@ -379,8 +381,6 @@ async def verification(message: types.Message, state: FSMContext):
     stage_num = state_data.get('stage_num')
     question_num = state_data.get('question_num') 
     questions_ask_num = state_data.get('questions_ask_num')  
-    # print('question_num', question_num)
-    # print('questions_ask_num', questions_ask_num)
 
     # Получаем вопрос
     question: Question = test_manager.get_question(
@@ -445,8 +445,8 @@ async def verification(message: types.Message, state: FSMContext):
         )
         await testing(message, state)
     else:
-        questions_data = test_manager.get_course_data(course_slug)
-        if stage_num < len(questions_data):
+        course_data = test_manager.get_course_data(course_slug)
+        if stage_num < len(course_data):
             await state.update_data(
                 stage_num=stage_num + 1,
                 question_num=1,
