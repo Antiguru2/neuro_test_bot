@@ -118,7 +118,7 @@ class Profile(BaseModel):
         questions_asked = {}
         course_history = self.studying_history.get(course_slug, [])
 
-        if course_history:
+        if course_history and len(course_history) >= stage_num:
             stage_history = course_history[stage_num - 1]
 
             for question in stage_history:

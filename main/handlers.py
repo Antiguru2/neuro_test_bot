@@ -451,8 +451,9 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
                 stage_num=stage_num + 1,
                 question_num=1,
             )
+            stage_data = test_manager.get_stage_data(course_slug, stage_num)
             text = f"Тема завершена"  
-            reply_markup = main_keyboards.get_menu_keyboard(course_slug , 1, 'kkk')
+            reply_markup = main_keyboards.get_menu_keyboard(course_slug , stage_data.get('slug'), profile.is_trained)
 
         else:
             text = str(
