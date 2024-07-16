@@ -148,27 +148,27 @@ async def append_value_state_data(state: FSMContext, name: str, values_list: lis
     await state.update_data({name: update_list})
 
 
-def get_stage_line_numbers_list() -> list:
-    content = interface.get_knowledge_base()
+# def get_stage_line_numbers_list() -> list:
+#     content = interface.get_knowledge_base()
 
-    pattern = r'# (\d+) этап обучения'
-    stage_matches = re.finditer(pattern, content)
+#     pattern = r'# (\d+) этап обучения'
+#     stage_matches = re.finditer(pattern, content)
 
-    stage_line_numbers = [match.start() for match in stage_matches]
+#     stage_line_numbers = [match.start() for match in stage_matches]
 
-    return stage_line_numbers
+#     return stage_line_numbers
 
 
-def get_stage_content_by_number(stage_num: int) -> str:
-    content = interface.get_knowledge_base()
+# def get_stage_content_by_number(stage_num: int) -> str:
+#     content = interface.get_knowledge_base()
 
-    pattern = rf'# {stage_num} этап обучения\n(.*?)(?=\n# |\Z)'
-    stage_match = re.search(pattern, content, re.DOTALL)
+#     pattern = rf'# {stage_num} этап обучения\n(.*?)(?=\n# |\Z)'
+#     stage_match = re.search(pattern, content, re.DOTALL)
 
-    if stage_match:
-        return stage_match.group(1).strip()
-    else:
-        return "Этап обучения не найден"
+#     if stage_match:
+#         return stage_match.group(1).strip()
+#     else:
+#         return "Этап обучения не найден"
     
 
 async def get_last_stage_num_and_last_question_index(state: FSMContext) -> tuple:

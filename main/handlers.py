@@ -309,10 +309,10 @@ async def test_questions_verification(callback: types.CallbackQuery, state: FSMC
 
     # Если ответ не правильный то скидываем на начало курса
     if not is_correct:
-        profile.drop_question_history(course_slug)
+        profile.drop_question_history(course_slug, stage_num - 1)
         await state.update_data(
             user_data=profile.model_dump(),
-            stage_num=1,
+            # stage_num=1,
             question_num=1,
         )
 
@@ -395,10 +395,10 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
 
     # Если ответ не правильный то скидываем на начало курса
     if not is_correct:
-        profile.drop_question_history(course_slug)
+        profile.drop_question_history(course_slug, stage_num - 1)
         await state.update_data(
             user_data=profile.model_dump(),
-            stage_num=1,
+            # stage_num=1,
             question_num=1,
         )
 
@@ -456,10 +456,6 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
             reply_markup = main_keyboards.get_menu_keyboard(course_slug , stage_data.get('slug'), profile.is_trained)
 
         else:
-            text = str(
-                f"\n\nВы набрали ... балов"
-            )
-
             completed_course_slugs_list: list = profile.completed_courses_slugs_list
             completed_course_slugs_list.append(course_slug)
             profile.completed_courses_slugs_list = completed_course_slugs_list
@@ -477,9 +473,8 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
                 await state.set_state(MainStatesGroup.neuro_consult)
 
                 text = f"""
-                    Обучение завершено
-                    \n\nВы набрали {test_manager.get_total_balls(profile.studying_history)} балов
-                    \n\nВы можете задать вопрос нейроконсультанту
+                    Обучение завершено 🎉🎉🎉
+                    \nВы можете задать вопрос нейроконсультанту 🧑‍🔬
                 """
 
             profile.save()

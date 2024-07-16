@@ -13,22 +13,20 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-knowledge_base_file_path = 'knowledge_bases/test_knowledge_base.txt'
+QUESTIONS_DATA_FILE_NAME = os.getenv('QUESTIONS_DATA_FILE_NAME') 
+# knowledge_base_file_path = 'knowledge_bases/test_knowledge_base.txt'
 
-def get_knowledge_base():
-    content = ''
-    with open(knowledge_base_file_path, 'r') as file:
-        content = file.read()
+# def get_knowledge_base():
+#     content = ''
+#     with open(knowledge_base_file_path, 'r') as file:
+#         content = file.read()
 
-    return content  
+#     return content  
 
-
-# questions_data_file_path = 'questions_data.json'
-questions_data_file_path = 'questions_data_testing.json'
 
 def get_questions_data():
     questions_data = []
-    with open(questions_data_file_path, 'r') as file:
+    with open(QUESTIONS_DATA_FILE_NAME, 'r') as file:
         questions_data = json.loads(file.read())
 
     return questions_data  

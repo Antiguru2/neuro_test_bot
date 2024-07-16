@@ -91,8 +91,9 @@ class Profile(BaseModel):
     def drop_question_history(
         self,
         course_slug: str, 
+        stage_index: int, 
     ) -> None:
-        self.studying_history[course_slug] = []
+        self.studying_history[course_slug][stage_index] = []
         self.save()
         
 
