@@ -128,7 +128,7 @@ REGISTRATION_DATA = [
         "text": "Выберите ваш отдел 🏢",
         "buttons": [
             {
-                "name": "Бугартерия 🧮",
+                "name": "Бухгартерия 🧮",
                 "slug": "accounting",
             },{
                 "name": "Менеджмент 📊",
