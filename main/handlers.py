@@ -464,7 +464,7 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
             completed_course_slugs_list.append(course_slug)
             profile.completed_courses_slugs_list = completed_course_slugs_list
 
-            if len(completed_course_slugs_list) < 2:
+            if len(completed_course_slugs_list) < 1:
                 await state.update_data(
                     stage_num=1,
                     question_num=1,
