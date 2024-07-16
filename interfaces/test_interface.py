@@ -23,7 +23,8 @@ def get_knowledge_base():
     return content  
 
 
-questions_data_file_path = 'questions_data.json'
+# questions_data_file_path = 'questions_data.json'
+questions_data_file_path = 'questions_data_testing.json'
 
 def get_questions_data():
     questions_data = []
