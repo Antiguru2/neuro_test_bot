@@ -2,3 +2,8 @@ aiogram==3.6.0
 requests==2.31.0
 python-dotenv==1.0.1
 openai==1.35.3
+langchain-community
+aiofiles
+python-dotenv
+faiss-cpu
+tiktoken

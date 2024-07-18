@@ -2,14 +2,19 @@ import re
 import os
 import json
 import requests
+import asyncio
 from openai import OpenAI
+from langchain.embeddings.openai import OpenAIEmbeddings
 from dotenv import load_dotenv
+from langchain.vectorstores import FAISS
 
 import logging
-
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+embeddings = OpenAIEmbeddings()
+faiss_db_name = 'Consultant/knowledge_base'
+faiss_db = FAISS.load_local(faiss_db_name, embeddings, allow_dangerous_deserialization=True)
 
 load_dotenv()
 
@@ -23,6 +28,10 @@ QUESTIONS_DATA_FILE_NAME = os.getenv('QUESTIONS_DATA_FILE_NAME')
 
 #     return content  
 
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_API_BASE_URL"),
+)
 
 def get_questions_data():
     questions_data = []
@@ -35,12 +44,56 @@ def verification_correct_answer(question, answer, context) -> tuple[bool, str]:
     return verify_answers(context, question.text, answer)
 
 
-async def get_neuro_consultant_answer(user_question: str) -> str:
-    neuro_consultant_answer = 'Ответ не известен.'
+async def get_neuro_consultant_answer(query: str) -> str:
+    docs = faiss_db.similarity_search(query, k=2)
+    message_content = '\n\n'.join([f'{doc.page_content}' for doc in docs])
+    system = """ Вы консультант службы поддержки работников в компании Элеком. 
+    Ваша задача — предоставить точную и обстоятельную информацию о требованиях и процедурах, предусмотренных регламентами компании. 
+    Перед началом работы вам будет представлена информация, включающая выдержки из регламентов и текущий вопрос работника. 
+    Ваша обязанность — ответить на вопросы работника, полагаясь исключительно на предоставленные документы. 
+    Особенно тщательно обращайте внимание на точность данных о правильности проведения регламентированных процедур. 
+    В своих ответах обязательно давайте ссылки на картинки, регламенты и инструкции из предоставлекак создать договор?нных вам документов, если это входит в контекст ответа. 
     
-    # Здесь должен быть код, который возвращает ответ консультанта
+    Пример правильного ответа:
+    1. **Переход на вкладку "Договоры" и создание договора:**
+        ![](image/media/image6.png)
+    - Перейдите на вкладку "Договоры" в программе 1С.
+    - Нажмите кнопку "Создать".
+    ![](image/media/image9.png)
+    - Введите цель договора и его наименование.
+    - Укажите организацию, с которой будет вестись взаимодействие.
+    - Заполните необходимые данные и перейдите на вкладку "Расчеты и оформление".
+    ![](image/media/image10.png)
 
-    return neuro_consultant_answer
+    Пример неправильного ответа:
+    1. **Переход на вкладку "Договоры" и создание договора:**
+    - Перейдите на вкладку "Договоры" в программе 1С.
+    - Нажмите кнопку "Создать".
+    - Введите цель договора и его наименование.
+    - Укажите организацию, с которой будет вестись взаимодействие.
+    - Заполните необходимые данные и перейдите на вкладку "Расчеты и оформление".
+    
+    Не добавляйте информацию из внешних источников! Если работник задал вопрос не касающийся регламентов и процедур в компании Элеком, сообщите, что вы не можете общаться на другие темы.
+    Начинайте общение сразу с ответа, избегая приветствий."""
+
+    user = f"""Работник задал вопрос. Используйте предоставленные вам отрывки из регламентов и процедур компании, 
+    чтобы ответить на вопрос работника. Не придумывайте ничего от себя. 
+    Ответ должен быть основан только на информации из предоставленных документов.
+    Если в предоставленной вам информации нет ответа на вопрос работника, скажите: "У меня нет такой информации".
+    Ваш ответ должен очень подробно передавать текст документа вместе с ссылками на картинки и документы.
+    Документы с информацией для ответа работнику: {message_content}\n\nВопрос работника: \n{query}"""
+
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user}
+    ]
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        temperature=0
+    )
+
+    return completion.choices[0].message.content
 
 
 def load_document_text(url: str) -> str:
@@ -56,13 +109,6 @@ def load_document_text(url: str) -> str:
     text = response.text
     return text
 
-
-
-
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_API_BASE_URL"),
-)
 
 # verification_system = load_document_text('https://docs.google.com/document/d/1_h8FhotM7A_FwhcHBoXxLE8cYXZzE25dE8WVq_ODqfM')
 
@@ -107,8 +153,8 @@ n5. Укажи точную оценку и краткий комментари�
     assist = """##_сдал##_ Пояснение: ответ студента полностью соответствует заданному вопросу, он точно отражает ключевые аспекты текста и хорошо структурирован"""
 
     response = client.chat.completions.create(
-        # model="gpt-4o",  # model="gpt-4-0613",
-        model="gpt-3.5-turbo-1106",
+        model="gpt-4o",
+        # model="gpt-3.5-turbo-1106",
         temperature=0.1,
         messages=[
             {"role": "system", "content": system},
