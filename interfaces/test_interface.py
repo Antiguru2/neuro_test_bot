@@ -177,7 +177,7 @@ n5. Укажи точную оценку и краткий комментари�
     logger.debug(f'Ответ от GPT: {ans}')
     logger.debug(f'Результат: {loaded_json}')
 
-    if 'сдал' in loaded_json['result']:
-        return True, loaded_json['comment']
-    else:
+    if 'не' in loaded_json['result']:
         return False, loaded_json['comment']
+    else:
+        return True, loaded_json['comment']

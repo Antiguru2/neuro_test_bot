@@ -309,7 +309,10 @@ async def test_questions_verification(callback: types.CallbackQuery, state: FSMC
 
     # Если ответ не правильный то скидываем на начало курса
     if not is_correct:
-        profile.drop_question_history(course_slug, stage_num - 1)
+        profile.drop_question_history(
+            course_slug, 
+            stage_num - 1
+        )
         await state.update_data(
             user_data=profile.model_dump(),
             # stage_num=1,
@@ -395,7 +398,10 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
 
     # Если ответ не правильный то скидываем на начало курса
     if not is_correct:
-        profile.drop_question_history(course_slug, stage_num - 1)
+        profile.drop_question_history(
+            course_slug, 
+            stage_num - 1
+        )
         await state.update_data(
             user_data=profile.model_dump(),
             # stage_num=1,
