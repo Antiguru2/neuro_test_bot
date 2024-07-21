@@ -329,7 +329,7 @@ async def test_questions_verification(callback: types.CallbackQuery, state: FSMC
             'parse_mode': 'html',
             'reply_markup': main_keyboards.get_menu_keyboard(
                 course_slug=course_slug,
-                stage_slug=main_utils.get_stage_slug(course_slug, 1),
+                stage_slug=main_utils.get_stage_slug(course_slug, stage_num),
                 is_trained=profile.is_trained,
             ),
         }  
@@ -418,7 +418,7 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
             'parse_mode': 'html',
             'reply_markup': main_keyboards.get_menu_keyboard(
                 course_slug=course_slug,
-                stage_slug=main_utils.get_stage_slug(course_slug, 1),
+                stage_slug=main_utils.get_stage_slug(course_slug, stage_num),
                 is_trained=profile.is_trained,
             ),
         }  
