@@ -93,7 +93,9 @@ class Profile(BaseModel):
         course_slug: str, 
         stage_index: int, 
     ) -> None:
-        self.studying_history[course_slug][stage_index] = []
+        studying_history = self.studying_history.get(course_slug)
+        if studying_history and len(studying_history) - 1 >= stage_index:
+            self.studying_history[course_slug][stage_index] = []
         self.save()
         
 
