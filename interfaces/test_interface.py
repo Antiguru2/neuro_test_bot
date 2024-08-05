@@ -53,17 +53,18 @@ async def get_neuro_consultant_answer(query: str) -> str:
     Ваша обязанность — ответить на вопросы работника, полагаясь исключительно на предоставленные документы. 
     Особенно тщательно обращайте внимание на точность данных о правильности проведения регламентированных процедур. 
     В своих ответах обязательно давайте ссылки на картинки, регламенты и инструкции из предоставлекак создать договор?нных вам документов, если это входит в контекст ответа. 
+    Ссылки на картинки преобразуй в html ссылки в теге a
     
     Пример правильного ответа:
     1. **Переход на вкладку "Договоры" и создание договора:**
-        ![](image/media/image6.png)
+    <a href="https://elecom.innoprompt.ru/images/image6.png">image6</a>
     - Перейдите на вкладку "Договоры" в программе 1С.
     - Нажмите кнопку "Создать".
-    ![](image/media/image9.png)
+    <a href="https://elecom.innoprompt.ru/images/image9.png">image9</a>
     - Введите цель договора и его наименование.
     - Укажите организацию, с которой будет вестись взаимодействие.
     - Заполните необходимые данные и перейдите на вкладку "Расчеты и оформление".
-    ![](image/media/image10.png)
+    <a href="https://elecom.innoprompt.ru/images/image10.png">image10</a>
 
     Пример неправильного ответа:
     1. **Переход на вкладку "Договоры" и создание договора:**
@@ -88,7 +89,8 @@ async def get_neuro_consultant_answer(query: str) -> str:
         {"role": "user", "content": user}
     ]
     completion = client.chat.completions.create(
-        model="gpt-4o",
+        # model="gpt-4o",
+        model="gpt-4o-mini",
         messages=messages,
         temperature=0
     )

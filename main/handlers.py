@@ -499,9 +499,37 @@ async def open_questions_verification(message: types.Message, state: FSMContext)
             await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id])                 
 
 
-@main_router.message(
-    MainStatesGroup.neuro_consult
-)
+# @main_router.message(
+#     MainStatesGroup.neuro_consult
+# )
+# async def neuro_consult(message: types.Message, state: FSMContext):
+#     '''
+#         Обработка сообщений в режиме нейро-консультанта
+#     '''
+#     from_user_id = message.chat.id
+#     await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+
+#     # Вопрос пользователя
+#     user_question = message.text
+
+#     # Ответ консультанта
+#     neuro_consultant_answer = await interface.get_neuro_consultant_answer(user_question)
+
+    
+
+#     message_data = {
+#         'text': neuro_consultant_answer,    
+#         'chat_id': from_user_id,
+#         'parse_mode': 'html',
+#         'reply_markup': None,
+#     }  
+#     message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+
+#     if is_sent:
+#         await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+        
+
+@main_router.message(MainStatesGroup.neuro_consult)
 async def neuro_consult(message: types.Message, state: FSMContext):
     '''
         Обработка сообщений в режиме нейро-консультанта
@@ -515,15 +543,19 @@ async def neuro_consult(message: types.Message, state: FSMContext):
     # Ответ консультанта
     neuro_consultant_answer = await interface.get_neuro_consultant_answer(user_question)
 
-    
+    # Разбиваем ответ на части, если он слишком длинный
+    max_length = 4096
+    messages = [neuro_consultant_answer[i:i + max_length] for i in range(0, len(neuro_consultant_answer), max_length)]
 
-    message_data = {
-        'text': neuro_consultant_answer,    
-        'chat_id': from_user_id,
-        'parse_mode': 'html',
-        'reply_markup': None,
-    }  
-    message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
+    for part in messages:
+        message_data = {
+            'text': part,    
+            'chat_id': from_user_id,
+            'parse_mode': 'html',
+            'reply_markup': None,
+            'disable_web_page_preview': True
+        }  
+        message, is_sent = await main_utils.edit_message_or_send(bot, state, message_data)
 
-    if is_sent:
-        await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
+        if is_sent:
+            await main_utils.append_value_state_data(state, 'previous_messages', [message.message_id]) 
